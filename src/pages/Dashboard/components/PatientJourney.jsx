@@ -1,0 +1,48 @@
+import { UserPlus, BedDouble, Stethoscope, FileText } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
+const STEPS = [
+  { id: 1, label: 'Register', desc: 'New patient registration\n& medical history', icon: UserPlus, path: '/patients' },
+  { id: 2, label: 'Admit to IPD', desc: 'In-patient admission\n& 13 digital forms', icon: BedDouble, path: '/admissions' },
+  { id: 3, label: 'Manage Care', desc: 'Treatment, labs,\nnursing & notes', icon: Stethoscope, path: '/admissions' },
+  { id: 4, label: 'Discharge', desc: 'Auto discharge summary\n& follow-up', icon: FileText, path: '/admissions' },
+];
+
+export default function PatientJourney() {
+  const navigate = useNavigate();
+  return (
+    <div style={{ background: 'white', border: '1px solid rgba(15,23,42,0.06)', borderRadius: 14, padding: '20px 24px', animation: 'mv-fade 200ms ease both' }}>
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', marginBottom: 14 }}>
+        Patient journey — how the system works
+      </div>
+      <div style={{ display: 'flex', alignItems: 'stretch' }}>
+        {STEPS.map((step, i) => {
+          const Icon = step.icon;
+          const isLast = i === STEPS.length - 1;
+          return (
+            <div key={step.id} style={{ display: 'contents' }}>
+              <div
+                onClick={() => navigate(step.path)}
+                style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '14px 10px', borderRadius: 10, cursor: 'pointer', transition: 'background 120ms', textAlign: 'center' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(8,145,178,0.05)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <div style={{ width: 36, height: 36, background: '#0891b2', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, marginBottom: 8 }}>{step.id}</div>
+                <Icon size={20} color="#0891b2" style={{ marginBottom: 6 }} />
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{step.label}</div>
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 3, lineHeight: 1.4, whiteSpace: 'pre-line' }}>{step.desc}</div>
+              </div>
+              {!isLast && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="#0891b2" opacity="0.5">
+                    <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8-8-8z" />
+                  </svg>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
