@@ -1,112 +1,254 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+
+/* ==========================================
+   Theme Configuration
+========================================== */
+
+@theme {
+  --font-sans: 'Montserrat', sans-serif;
+
+  /* Brand Colors */
+  --color-primary: #0891b2;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+
+  /* Sidebar */
+  --color-sidebar: #16253a;
+  --color-sidebar-hover: #24354a;
+}
+
+/* ==========================================
+   Light Theme
+========================================== */
+
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  --background: #f8fafc;
+  --surface: #ffffff;
+  --surface-secondary: #f1f5f9;
 
-  --sans: system-ui, "Segoe UI", Roboto, sans-serif;
-  --heading: system-ui, "Segoe UI", Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  --heading: #0f172a;
+  --body: #64748b;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --border: #e2e8f0;
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
+  --sidebar-bg: #16253a;
+  --sidebar-hover: #24354a;
+
+  --card-shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+/* ==========================================
+   Dark Theme
+========================================== */
+
+.dark {
+  --background: #020817;
+  --surface: #0f172a;
+  --surface-secondary: #1e293b;
+
+  --heading: #f8fafc;
+  --body: #94a3b8;
+
+  --border: #334155;
+
+  --sidebar-bg: #16253a;
+  --sidebar-hover: #24354a;
+
+  --card-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* ==========================================
+   Base
+========================================== */
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+  }
+
+  body {
+    background: var(--background);
+    color: var(--body);
+    min-height: 100vh;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  * {
+    border-color: var(--border);
+    box-sizing: border-box;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--heading);
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+/* ==========================================
+   Typography System
+========================================== */
+
+@layer components {
+  .page-title {
+    @apply text-4xl font-semibold tracking-tight;
+    color: var(--heading);
   }
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
+  .page-subtitle {
+    @apply mt-2 text-base;
+    color: var(--body);
+  }
+
+  .section-title {
+    @apply text-lg font-semibold uppercase tracking-wider;
+    color: var(--heading);
+  }
+
+  .card-title {
+    @apply text-base font-semibold;
+    color: var(--heading);
+  }
+
+  .description {
+    @apply text-sm leading-6;
+    color: var(--body);
+  }
+
+  .label {
+    @apply text-xs font-semibold uppercase tracking-widest;
+    color: var(--body);
   }
 }
 
-body {
-  margin: 0;
-}
+/* ==========================================
+   Cards
+========================================== */
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
+@layer components {
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--card-shadow);
+    @apply rounded-3xl p-6;
+  }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
+  .stats-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--card-shadow);
+    @apply rounded-3xl p-6;
   }
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
+
+/* ==========================================
+   Sidebar
+========================================== */
+
+@layer components {
+  .sidebar {
+    background: var(--sidebar-bg);
+    @apply text-white;
+  }
+
+  .sidebar-item {
+    @apply flex items-center gap-3 rounded-xl px-4 py-3 transition-all duration-200;
+  }
+
+  .sidebar-item:hover {
+    background: var(--sidebar-hover);
+  }
+
+  .sidebar-item-active {
+    background: rgba(255, 255, 255, 0.1);
+    @apply text-cyan-400;
   }
 }
-p {
-  margin: 0;
+
+/* ==========================================
+   Buttons
+========================================== */
+
+@layer components {
+  .btn-primary {
+    @apply rounded-xl px-4 py-2 font-medium text-white transition-all;
+    background: var(--color-primary);
+  }
+
+  .btn-primary:hover {
+    opacity: 0.9;
+  }
+
+  .btn-secondary {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--heading);
+
+    @apply rounded-xl px-4 py-2 font-medium;
+  }
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+/* ==========================================
+   Form Elements
+========================================== */
+
+@layer components {
+  .input {
+    background: var(--surface);
+    border: 1px solid var(--border);
+
+    @apply w-full rounded-xl px-4 py-3 outline-none;
+  }
+
+  .input:focus {
+    border-color: var(--color-primary);
+  }
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+/* ==========================================
+   Status Badges
+========================================== */
+
+@layer components {
+  .badge-success {
+    @apply rounded-full px-3 py-1 text-xs font-medium;
+    background: rgb(34 197 94 / 10%);
+    color: rgb(34 197 94);
+  }
+
+  .badge-warning {
+    @apply rounded-full px-3 py-1 text-xs font-medium;
+    background: rgb(245 158 11 / 10%);
+    color: rgb(245 158 11);
+  }
+
+  .badge-danger {
+    @apply rounded-full px-3 py-1 text-xs font-medium;
+    background: rgb(239 68 68 / 10%);
+    color: rgb(239 68 68);
+  }
+}
+
+/* ==========================================
+   Scrollbar
+========================================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #64748b;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
 }
