@@ -59,9 +59,9 @@ const TABS = [
 ];
 
 const C = {
-  text: '#0f172a', muted: '#64748b', subtle: '#94a3b8',
-  bg: '#f8fafc', surface: 'white', subtleBg: '#f1f5f9',
-  primary: '#0891b2', border: 'rgba(15,23,42,0.06)',
+  text: 'var(--fg-on-light)', muted: 'var(--fg-on-light-muted)', subtle: 'var(--fg-on-light-muted)',
+  bg: 'var(--bg-canvas)', surface: 'var(--surface)', subtleBg: 'var(--surface-subtle)',
+  primary: '#0891b2', border: 'var(--border-card)',
 };
 
 function InfoRow({ label, value, icon: Icon }) {
@@ -91,7 +91,7 @@ export default function PatientDetail() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <button
           onClick={() => navigate('/patients')}
-          style={{ background: 'transparent', border: '1px solid rgba(15,23,42,0.12)', borderRadius: 8, padding: '7px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: C.muted }}
+          style={{ background: 'transparent', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '7px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: C.muted }}
         >
           <ArrowLeft size={14} /> Back
         </button>
@@ -101,7 +101,7 @@ export default function PatientDetail() {
       </div>
 
       {/* Patient header card */}
-      <div style={{ background: 'white', border: `1px solid ${C.border}`, borderRadius: 14, padding: 24, marginBottom: 20 }}>
+      <div style={{ background: 'var(--surface)', border: `1px solid ${C.border}`, borderRadius: 14, padding: 24, marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18 }}>
           <div style={{ width: 56, height: 56, borderRadius: '50%', background: C.subtleBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: C.text, flexShrink: 0 }}>
             {patient.initials}
@@ -145,7 +145,7 @@ export default function PatientDetail() {
         {tab === 'overview' && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             {/* Demographics */}
-            <div style={{ background: 'white', border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
+            <div style={{ background: 'var(--surface)', border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
               <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 16 }}>Demographics</div>
               <InfoRow label="Full name" value={patient.name} icon={User} />
               <InfoRow label="Age / Sex" value={`${patient.age} yrs, ${patient.sex}`} icon={User} />
@@ -157,13 +157,13 @@ export default function PatientDetail() {
             </div>
             {/* Emergency & Allergies */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ background: 'white', border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
+              <div style={{ background: 'var(--surface)', border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 16 }}>Emergency contact</div>
                 <InfoRow label="Name" value={patient.emergency.name} />
                 <InfoRow label="Relation" value={patient.emergency.relation} />
                 <InfoRow label="Phone" value={patient.emergency.phone} icon={Phone} />
               </div>
-              <div style={{ background: 'white', border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
+              <div style={{ background: 'var(--surface)', border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 12 }}>Allergies</div>
                 {patient.allergies.length === 0 ? (
                   <div style={{ fontSize: 13, color: C.muted }}>No known allergies recorded.</div>
@@ -183,7 +183,7 @@ export default function PatientDetail() {
             {patient.visits.length === 0
               ? <div style={{ textAlign: 'center', padding: 48, color: C.muted }}>No visits recorded.</div>
               : patient.visits.map((v, i) => (
-                <div key={i} style={{ background: 'white', border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
+                <div key={i} style={{ background: 'var(--surface)', border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{v.date}</div>
                     <div style={{ fontSize: 12, color: C.muted }}>{v.doctor} · {v.dept}</div>
@@ -195,7 +195,7 @@ export default function PatientDetail() {
         )}
 
         {tab === 'prescriptions' && (
-          <div style={{ background: 'white', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ background: 'var(--surface)', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 0.6fr 0.6fr 1fr', padding: '12px 20px', background: C.subtleBg, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, fontWeight: 600 }}>
               <div>Drug</div><div>Dosage</div><div>Duration</div><div>Prescribed by</div>
             </div>
@@ -211,7 +211,7 @@ export default function PatientDetail() {
         )}
 
         {tab === 'labs' && (
-          <div style={{ background: 'white', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ background: 'var(--surface)', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 0.7fr', padding: '12px 20px', background: C.subtleBg, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, fontWeight: 600 }}>
               <div>Test</div><div>Result</div><div>Normal Range</div><div>Status</div>
             </div>
@@ -230,7 +230,7 @@ export default function PatientDetail() {
         )}
 
         {tab === 'vitals' && (
-          <div style={{ background: 'white', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ background: 'var(--surface)', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr 1fr', padding: '12px 20px', background: C.subtleBg, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, fontWeight: 600 }}>
               <div>Date</div><div>BP</div><div>Pulse</div><div>SpO₂</div><div>Temp</div><div>Weight</div>
             </div>
@@ -248,7 +248,7 @@ export default function PatientDetail() {
         )}
 
         {tab === 'billing' && (
-          <div style={{ background: 'white', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ background: 'var(--surface)', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 0.8fr', padding: '12px 20px', background: C.subtleBg, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, fontWeight: 600 }}>
               <div>Invoice</div><div>Date</div><div>Amount</div><div>Status</div>
             </div>
@@ -256,7 +256,7 @@ export default function PatientDetail() {
               ? <div style={{ padding: 32, textAlign: 'center', color: C.muted }}>No bills on record.</div>
               : patient.billings.map((b, i) => (
                 <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 0.8fr', padding: '13px 20px', borderTop: `1px solid ${C.border}` }}>
-                  <div style={{ fontSize: 12, color: C.muted, fontFamily: 'monospace' }}>{b.id}</div>
+                  <div style={{ fontSize: 12, color: C.muted }}>{b.id}</div>
                   <div style={{ fontSize: 13, color: C.muted }}>{b.date}</div>
                   <div style={{ fontSize: 13, fontWeight: 500, color: C.text }}>{fmt(b.amount)}</div>
                   <div><span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 10, background: 'rgba(78,179,116,0.1)', color: '#15803d', fontWeight: 500 }}>{b.status}</span></div>

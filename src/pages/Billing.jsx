@@ -107,7 +107,7 @@ export default function Billing() {
                 <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--surface-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, color: 'var(--fg-on-light)', flexShrink: 0 }}>{b.initials}</div>
                 <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--fg-on-light)' }}>{b.patient}</div>
               </div>
-              <div style={{ fontSize: 12, color: 'var(--fg-on-light-muted)', fontFamily: 'monospace' }}>{b.id}</div>
+              <div style={{ fontSize: 12, color: 'var(--fg-on-light-muted)' }}>{b.id}</div>
               <div style={{ fontSize: 13, color: 'var(--fg-on-light-muted)' }}>{b.date.split(' ').slice(0, 2).join(' ')}</div>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--fg-on-light)' }}>{fmt(b.amount)}</div>

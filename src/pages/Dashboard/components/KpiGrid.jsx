@@ -7,8 +7,8 @@ const KPIs = [
     badge: '+12 this month',
     badgeColor: '#15803d',
     badgeBg: 'rgba(78,179,116,0.10)',
-    iconBg: '#f1f5f9',
-    iconColor: '#0f172a',
+    iconBg: 'var(--surface-subtle)',
+    iconColor: 'var(--fg-on-light)',
     icon: Users,
   },
   {
@@ -21,11 +21,31 @@ const KPIs = [
     iconColor: '#d9a441',
     icon: FlaskConical,
   },
+  {
+    label: 'IPD admissions',
+    value: 14,
+    badge: 'Currently active',
+    badgeColor: '#0369a1',
+    badgeBg: 'rgba(8,145,178,0.10)',
+    iconBg: 'rgba(8,145,178,0.10)',
+    iconColor: '#0891b2',
+    icon: BedDouble,
+  },
+  {
+    label: 'Revenue this month',
+    value: '₹3.4L',
+    badge: '+21%',
+    badgeColor: '#15803d',
+    badgeBg: 'rgba(78,179,116,0.10)',
+    iconBg: 'rgba(21,128,61,0.10)',
+    iconColor: '#15803d',
+    icon: IndianRupee,
+  },
 ];
 
 export default function KpiGrid() {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
       {KPIs.map(kpi => {
         const Icon = kpi.icon;
         return (
@@ -38,8 +58,8 @@ export default function KpiGrid() {
                 {kpi.badge}
               </span>
             </div>
-            <div style={{ fontSize: 32, fontWeight: 300, letterSpacing: '-0.02em', color: '#0f172a', lineHeight: 1 }}>{kpi.value}</div>
-            <div style={{ fontSize: 13, color: '#64748b', marginTop: 6 }}>{kpi.label}</div>
+            <div style={{ fontSize: 32, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--fg-on-light)', lineHeight: 1 }}>{kpi.value}</div>
+            <div style={{ fontSize: 13, color: 'var(--fg-on-light-muted)', marginTop: 6 }}>{kpi.label}</div>
           </div>
         );
       })}

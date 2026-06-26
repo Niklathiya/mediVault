@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { Plus, AlertTriangle, X } from 'lucide-react';
+import CustomSelect from '../components/ui/CustomSelect';
 
 const ALL_PATIENTS = [
   { id: 'PT-0128', name: 'Kiran Desai', initials: 'KD', phone: '98765 43210', blood: 'B+', ageSex: '34M', tags: ['Diabetes', 'Hypertension'], status: 'active', hasAllergy: false, reg: '10 Jun 2026' },
@@ -61,19 +62,19 @@ export default function Patients() {
 
       {/* Filters */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={selectStyle}>
+        <CustomSelect style={selectStyle} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
           <option value="all">All status</option>
           <option value="active">Active only</option>
           <option value="archived">Archived</option>
-        </select>
-        <select value={bloodFilter} onChange={e => setBloodFilter(e.target.value)} style={selectStyle}>
+        </CustomSelect>
+        <CustomSelect style={selectStyle} value={bloodFilter} onChange={e => setBloodFilter(e.target.value)}>
           <option value="all">All blood groups</option>
           {['A+','A-','B+','B-','O+','O-','AB+','AB-'].map(b => <option key={b} value={b}>{b}</option>)}
-        </select>
-        <select value={tagFilter} onChange={e => setTagFilter(e.target.value)} style={selectStyle}>
+        </CustomSelect>
+        <CustomSelect style={selectStyle} value={tagFilter} onChange={e => setTagFilter(e.target.value)}>
           <option value="all">All tags</option>
           {allTags.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
+        </CustomSelect>
         {hasFilters && (
           <button onClick={clearFilters} style={{
             background: 'transparent', border: '1px solid var(--border-ui)',

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X, BedDouble, CheckCircle2 } from 'lucide-react';
+import CustomSelect from '../ui/CustomSelect';
 
 const PATIENTS = [
   'Kiran Desai (PT-0128)', 'Meena Agarwal (PT-0127)', 'Suresh Rao (PT-0126)',
@@ -83,18 +84,18 @@ export default function NewAdmissionModal({ open, onClose }) {
         >
           <label style={{ display: 'block' }}>
             <span style={lbl}>Patient *</span>
-            <select style={inp} required value={form.patient} onChange={e => set('patient', e.target.value)}>
+            <CustomSelect style={inp} required value={form.patient} onChange={e => set('patient', e.target.value)}>
               <option value="">Select patient…</option>
               {PATIENTS.map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
+            </CustomSelect>
           </label>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <label style={{ display: 'block' }}>
               <span style={lbl}>Ward</span>
-              <select style={inp} value={form.ward} onChange={e => set('ward', e.target.value)}>
+              <CustomSelect style={inp} value={form.ward} onChange={e => set('ward', e.target.value)}>
                 {WARDS.map(w => <option key={w}>{w}</option>)}
-              </select>
+              </CustomSelect>
             </label>
             <label style={{ display: 'block' }}>
               <span style={lbl}>Bed Number</span>
@@ -104,10 +105,10 @@ export default function NewAdmissionModal({ open, onClose }) {
 
           <label style={{ display: 'block' }}>
             <span style={lbl}>Attending Doctor</span>
-            <select style={inp} value={form.doctor} onChange={e => set('doctor', e.target.value)}>
+            <CustomSelect style={inp} value={form.doctor} onChange={e => set('doctor', e.target.value)}>
               <option value="">Select doctor…</option>
               {DOCTORS.map(d => <option key={d}>{d}</option>)}
-            </select>
+            </CustomSelect>
           </label>
 
           <label style={{ display: 'block' }}>

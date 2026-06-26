@@ -12,12 +12,12 @@ const PATIENTS = [
 export default function RecentPatients() {
   const navigate = useNavigate();
   return (
-    <div style={{ background: 'white', border: '1px solid rgba(15,23,42,0.06)', borderRadius: 12, padding: 22 }}>
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border-card)', borderRadius: 12, padding: 22 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#0f172a' }}>Recently updated</h3>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--fg-on-light)' }}>Recently updated</h3>
         <button
           onClick={() => navigate('/patients')}
-          style={{ background: 'transparent', border: 'none', color: '#0f172a', fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+          style={{ background: 'transparent', border: 'none', color: 'var(--fg-on-light-muted)', fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
         >
           All <ArrowRight size={14} />
         </button>
@@ -26,17 +26,17 @@ export default function RecentPatients() {
         {PATIENTS.map(p => (
           <div
             key={p.id}
-            onClick={() => navigate('/patients')}
+            onClick={() => navigate(`/patients/${p.id}`)}
             style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 10, borderRadius: 8, cursor: 'pointer', transition: 'background 120ms' }}
-            onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-subtle)'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
           >
-            <div style={{ width: 34, height: 34, background: '#f1f5f9', color: '#0f172a', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
+            <div style={{ width: 34, height: 34, background: 'var(--surface-subtle)', color: 'var(--fg-on-light)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
               {p.initials}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 500, color: '#0f172a' }}>{p.name}</div>
-              <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>{p.id} · {p.ageSex}</div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--fg-on-light)' }}>{p.name}</div>
+              <div style={{ fontSize: 11, color: 'var(--fg-on-light-muted)', marginTop: 1 }}>{p.id} · {p.ageSex}</div>
             </div>
             {p.hasAllergy && <AlertTriangle size={14} color="#d95050" />}
           </div>

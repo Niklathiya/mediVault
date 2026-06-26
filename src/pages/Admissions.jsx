@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { Plus } from 'lucide-react';
+import CustomSelect from '../components/ui/CustomSelect';
 
 const ADMISSIONS = [
   { id: 'IPD-2026-042', patient: 'Ramesh Patel', initials: 'RP', doctor: 'Dr. Priya Mehta', ward: 'General', bed: '4A', since: '23 Jun 2026', days: 3, status: 'Admitted', diagnosis: 'Acute Appendicitis' },
@@ -81,7 +82,7 @@ export default function Admissions() {
             );
           })}
         </div>
-        <select
+        <CustomSelect
           value={wardFilter}
           onChange={e => setWardFilter(e.target.value)}
           style={{
@@ -91,7 +92,7 @@ export default function Admissions() {
           }}
         >
           {WARDS.map(w => <option key={w}>{w}</option>)}
-        </select>
+        </CustomSelect>
       </div>
 
       {/* KPI mini cards */}
