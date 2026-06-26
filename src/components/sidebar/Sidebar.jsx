@@ -12,6 +12,7 @@ import {
   UserCheck,
   Receipt,
   BarChart2,
+  Activity,
   ChevronDown,
   ChevronRight,
   Settings,
@@ -37,8 +38,8 @@ function SideNavItem({ to, icon: Icon, label, sub, badge }) {
       to={to}
       style={({ isActive }) => ({
         ...NAV_ITEM_STYLE,
-        background: isActive ? 'rgba(186,236,85,0.15)' : 'transparent',
-        color: isActive ? '#baec55' : 'rgba(255,255,255,0.85)',
+        background: isActive ? '#e0f2fe1a' : 'transparent',
+        color: isActive ? '#0891B2' : 'rgba(255,255,255,0.85)',
       })}
       onMouseEnter={(e) => {
         if (!e.currentTarget.classList.contains('active'))
@@ -51,9 +52,9 @@ function SideNavItem({ to, icon: Icon, label, sub, badge }) {
     >
       {({ isActive }) => (
         <>
-          <Icon size={18} style={{ flexShrink: 0, color: isActive ? '#baec55' : 'inherit' }} />
+          <Icon size={18} style={{ flexShrink: 0, color: isActive ? '#0891B2' : 'inherit' }} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div>{label}</div>
+            <div className="text-[14px]">{label}</div>
             {sub && (
               <div style={{ fontSize: 10, opacity: 0.6, fontWeight: 400, marginTop: 1 }}>{sub}</div>
             )}
@@ -64,8 +65,13 @@ function SideNavItem({ to, icon: Icon, label, sub, badge }) {
                 fontSize: 11,
                 background: 'rgba(255,255,255,0.12)',
                 padding: '2px 8px',
-                borderRadius: 10,
+                borderRadius: '100%',
                 flexShrink: 0,
+                width: '24px',
+                height: '24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
               {badge}
@@ -87,6 +93,7 @@ function SectionLabel({ children }) {
         opacity: 0.45,
         textTransform: 'uppercase',
         fontWeight: 600,
+        color: '#ffffff',
       }}
     >
       {children}
@@ -109,7 +116,7 @@ export default function Sidebar() {
   return (
     <aside
       style={{
-        width: 240,
+        width: 280,
         flexShrink: 0,
         background: '#1c2b3a',
         display: 'flex',
@@ -124,30 +131,23 @@ export default function Sidebar() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div
             style={{
-              width: 38,
-              height: 38,
+              width: 36,
+              height: 36,
               borderRadius: 10,
-              background: 'rgba(186,236,85,0.15)',
+              background: '#e0f2fe',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <HeartPulse size={20} color="#baec55" />
+            <HeartPulse size={20} color="#0891B2" />
           </div>
           <div>
-            <div
-              style={{ fontSize: 15, fontWeight: 700, color: 'white', letterSpacing: '-0.01em' }}
-            >
-              MediVault
-            </div>
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 1 }}>
-              BAPS Pramukh Swami Hospital
-            </div>
+            <div style={{ fontSize: 18, color: 'white', letterSpacing: '-0.01em' }}>MediVault</div>
           </div>
         </div>
 
-        <div style={{ height: 1, background: 'rgba(186,236,85,0.12)', margin: '18px 0' }} />
+        <div style={{ height: 1, background: '#e0f2fe40', margin: '18px 0' }} />
 
         {/* Nav */}
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -180,11 +180,12 @@ export default function Sidebar() {
             onClick={() => setTeamOpen((o) => !o)}
             style={{
               ...NAV_ITEM_STYLE,
-              background: isTeamActive ? 'rgba(186,236,85,0.15)' : 'transparent',
-              color: isTeamActive ? '#baec55' : 'rgba(255,255,255,0.85)',
+              background: isTeamActive ? '#e0f2fe1a' : 'transparent',
+              color: isTeamActive ? '#0891B2' : 'rgba(255,255,255,0.85)',
               border: 'none',
               width: '100%',
               textAlign: 'left',
+              transform: 'scale(1)',
             }}
             onMouseEnter={(e) => {
               if (!isTeamActive) e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
@@ -217,8 +218,15 @@ export default function Sidebar() {
             </div>
           )}
 
-          <SectionLabel>Finance & Reports</SectionLabel>
+          <SectionLabel>Finance</SectionLabel>
           <SideNavItem to="/billing" icon={Receipt} label="Billing" sub="Invoices &amp; payments" />
+          <SectionLabel>Reports</SectionLabel>
+          <SideNavItem
+            to="/activity"
+            icon={Activity}
+            label="Activity Log"
+            sub="All digital records"
+          />
           <SideNavItem to="/analytics" icon={BarChart2} label="Analytics" sub="Monthly reports" />
 
           <SectionLabel>System</SectionLabel>
@@ -241,8 +249,8 @@ export default function Sidebar() {
               width: 32,
               height: 32,
               borderRadius: '50%',
-              background: 'rgba(186,236,85,0.2)',
-              color: '#baec55',
+              background: '#e0f2fe1a',
+              color: '#0891B2',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

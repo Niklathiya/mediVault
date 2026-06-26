@@ -9,6 +9,7 @@ import AdmissionDetail from '../pages/AdmissionDetail';
 import Staff from '../pages/Staff';
 import Billing from '../pages/Billing';
 import Analytics from '../pages/Analytics';
+import ActivityLog from '../pages/ActivityLog';
 import Settings from '../pages/Settings';
 
 export default function AppRoutes() {
@@ -32,6 +33,7 @@ export default function AppRoutes() {
           <Route path="/staff/support" element={<Staff />} />
 
           <Route path="/billing" element={<Billing />} />
+          <Route path="/activity" element={<ActivityLog />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
