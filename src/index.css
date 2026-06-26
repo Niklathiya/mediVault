@@ -321,6 +321,10 @@
   .table-row:hover {
     background: var(--bg-canvas);
   }
+
+  .table-row:hover {
+    background: var(--bg-canvas);
+  }
 }
 
 /* ==========================================
