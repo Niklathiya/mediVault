@@ -46,20 +46,63 @@ const KPIs = [
 export default function KpiGrid() {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
-      {KPIs.map(kpi => {
+      {KPIs.map((kpi) => {
         const Icon = kpi.icon;
         return (
-          <div key={kpi.label} className="kpi-card" style={{ animation: 'mv-fade 220ms ease both' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <div style={{ width: 38, height: 38, background: kpi.iconBg, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: kpi.iconColor }}>
+          <div
+            key={kpi.label}
+            className="kpi-card"
+            style={{ animation: 'mv-fade 220ms ease both' }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 14,
+              }}
+            >
+              <div
+                style={{
+                  width: 38,
+                  height: 38,
+                  background: kpi.iconBg,
+                  borderRadius: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: kpi.iconColor,
+                }}
+              >
                 <Icon size={18} />
               </div>
-              <span style={{ fontSize: 11, color: kpi.badgeColor, background: kpi.badgeBg, padding: '3px 8px', borderRadius: 10, fontWeight: 500 }}>
+              <span
+                style={{
+                  fontSize: 11,
+                  color: kpi.badgeColor,
+                  background: kpi.badgeBg,
+                  padding: '3px 8px',
+                  borderRadius: 10,
+                  fontWeight: 500,
+                }}
+              >
                 {kpi.badge}
               </span>
             </div>
-            <div style={{ fontSize: 32, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--fg-on-light)', lineHeight: 1 }}>{kpi.value}</div>
-            <div style={{ fontSize: 13, color: 'var(--fg-on-light-muted)', marginTop: 6 }}>{kpi.label}</div>
+            <div
+              style={{
+                fontSize: 32,
+                fontWeight: 300,
+                letterSpacing: '-0.02em',
+                color: 'var(--fg-on-light)',
+                lineHeight: 1,
+              }}
+            >
+              {kpi.value}
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--fg-on-light-muted)', marginTop: 6 }}>
+              {kpi.label}
+            </div>
           </div>
         );
       })}
