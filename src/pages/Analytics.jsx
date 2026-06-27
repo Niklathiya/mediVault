@@ -1,172 +1,309 @@
-import { TrendingUp, Users, BedDouble, IndianRupee, FlaskConical } from 'lucide-react';
+import { useState } from 'react';
+import {
+  UserPlus, BedDouble, LogOut, IndianRupee,
+  Stethoscope, Receipt, TrendingUp, ChevronDown,
+} from 'lucide-react';
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+// ── Last 12 months dropdown options ─────────────────────────────────────────
+function buildMonthOptions() {
+  const opts = [];
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(2026, 5 - i, 1); // anchor: Jun 2026
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const label = d.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+    opts.push({ key, label });
+  }
+  return opts;
+}
+const MONTH_OPTIONS = buildMonthOptions();
 
-const ADMISSION_DATA = [18, 24, 21, 29, 26, 31];
-const REVENUE_DATA = [180000, 240000, 210000, 310000, 280000, 340000];
-const MAX_ADM = Math.max(...ADMISSION_DATA);
-const MAX_REV = Math.max(...REVENUE_DATA);
+// ── KPI data per month ───────────────────────────────────────────────────────
+const MONTHLY_KPI = {
+  '2026-06': { patients: 31, admissions: 31, discharged: 28, avgLos: '4.2', revenue: '₹3.4L', outstanding: '₹48K' },
+  '2026-05': { patients: 26, admissions: 26, discharged: 24, avgLos: '3.8', revenue: '₹2.8L', outstanding: '₹35K' },
+  '2026-04': { patients: 29, admissions: 29, discharged: 26, avgLos: '4.0', revenue: '₹3.1L', outstanding: '₹42K' },
+  '2026-03': { patients: 21, admissions: 21, discharged: 19, avgLos: '3.5', revenue: '₹2.1L', outstanding: '₹28K' },
+  '2026-02': { patients: 24, admissions: 24, discharged: 22, avgLos: '3.7', revenue: '₹2.4L', outstanding: '₹30K' },
+  '2026-01': { patients: 18, admissions: 18, discharged: 16, avgLos: '3.3', revenue: '₹1.8L', outstanding: '₹22K' },
+};
+const DEFAULT_KPI = { patients: 12, admissions: 12, discharged: 10, avgLos: '3.1', revenue: '₹1.2L', outstanding: '₹18K' };
 
-const WARD_OCCUPANCY = [
-  { ward: 'General', beds: 20, occupied: 14 },
-  { ward: 'ICU', beds: 8, occupied: 6 },
-  { ward: 'Surgery', beds: 12, occupied: 9 },
-  { ward: 'Maternity', beds: 10, occupied: 5 },
-  { ward: 'Orthopaedic', beds: 8, occupied: 3 },
-  { ward: 'Paediatric', beds: 10, occupied: 7 },
+// ── Admissions by ward ───────────────────────────────────────────────────────
+const WARD_MONTHLY = {
+  '2026-06': [
+    { ward: 'General Ward', admissions: 14 },
+    { ward: 'ICU',          admissions: 6  },
+    { ward: 'Surgery',      admissions: 5  },
+    { ward: 'Maternity',    admissions: 4  },
+    { ward: 'Orthopaedic',  admissions: 2  },
+  ],
+  '2026-05': [
+    { ward: 'General Ward', admissions: 11 },
+    { ward: 'ICU',          admissions: 5  },
+    { ward: 'Surgery',      admissions: 5  },
+    { ward: 'Maternity',    admissions: 3  },
+    { ward: 'Orthopaedic',  admissions: 2  },
+  ],
+};
+const DEFAULT_WARDS = [
+  { ward: 'General Ward', admissions: 8 },
+  { ward: 'ICU',          admissions: 3 },
+  { ward: 'Surgery',      admissions: 3 },
+  { ward: 'Maternity',    admissions: 2 },
+  { ward: 'Orthopaedic',  admissions: 1 },
 ];
 
-const BILLING_STATUS = [
-  { label: 'Paid', value: 62, color: '#15803d' },
-  { label: 'Partial', value: 23, color: '#d9a441' },
-  { label: 'Unpaid', value: 15, color: '#d95050' },
+// ── Top diagnoses ────────────────────────────────────────────────────────────
+const DIAG_MONTHLY = {
+  '2026-06': [
+    { name: 'Dengue Fever',            count: 8 },
+    { name: 'Hypertension',            count: 7 },
+    { name: 'Diabetes Complications',  count: 6 },
+    { name: 'Cardiac Events',          count: 4 },
+    { name: 'Fractures / Ortho',       count: 3 },
+  ],
+  '2026-05': [
+    { name: 'Hypertension',            count: 7 },
+    { name: 'Dengue Fever',            count: 6 },
+    { name: 'Diabetes Complications',  count: 5 },
+    { name: 'Cardiac Events',          count: 4 },
+    { name: 'Respiratory Infection',   count: 4 },
+  ],
+};
+const DEFAULT_DIAGS = [
+  { name: 'Hypertension',           count: 5 },
+  { name: 'Diabetes Complications', count: 4 },
+  { name: 'Cardiac Events',         count: 3 },
+  { name: 'Dengue Fever',           count: 2 },
+  { name: 'Fractures / Ortho',      count: 2 },
 ];
 
-const TOP_DIAGNOSES = [
-  { name: 'Dengue Fever', count: 18 },
-  { name: 'Hypertension', count: 15 },
-  { name: 'Diabetes Complications', count: 12 },
-  { name: 'Cardiac Events', count: 9 },
-  { name: 'Fractures / Ortho', count: 8 },
+// ── Billing status ───────────────────────────────────────────────────────────
+const BILL_MONTHLY = {
+  '2026-06': { paid: 22, partial: 6, pending: 4 },
+  '2026-05': { paid: 18, partial: 5, pending: 3 },
+  '2026-04': { paid: 20, partial: 6, pending: 3 },
+  '2026-03': { paid: 15, partial: 4, pending: 2 },
+  '2026-02': { paid: 17, partial: 5, pending: 2 },
+  '2026-01': { paid: 13, partial: 3, pending: 2 },
+};
+const DEFAULT_BILLS = { paid: 9, partial: 2, pending: 1 };
+
+// ── 6-month trend (fixed window Jan–Jun 2026) ────────────────────────────────
+const TREND = [
+  { month: 'Jan', patients: 18, admissions: 18 },
+  { month: 'Feb', patients: 24, admissions: 24 },
+  { month: 'Mar', patients: 21, admissions: 21 },
+  { month: 'Apr', patients: 29, admissions: 29 },
+  { month: 'May', patients: 26, admissions: 26 },
+  { month: 'Jun', patients: 31, admissions: 31 },
 ];
-const MAX_DIAG = TOP_DIAGNOSES[0].count;
+const TREND_MAX = Math.max(...TREND.flatMap(t => [t.patients, t.admissions]));
 
-const fmt = n => n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : `₹${(n / 1000).toFixed(0)}K`;
-
-const KPI_CARDS = [
-  { label: 'Patients this month', value: '128', delta: '+12%', positive: true, icon: Users, iconBg: 'rgba(15,23,42,0.06)', iconColor: 'var(--fg-on-light)' },
-  { label: 'Admissions this month', value: '31', delta: '+19%', positive: true, icon: BedDouble, iconBg: 'rgba(8,145,178,0.10)', iconColor: '#0891b2' },
-  { label: 'Revenue this month', value: '₹3.4L', delta: '+21%', positive: true, icon: IndianRupee, iconBg: 'rgba(21,128,61,0.10)', iconColor: '#15803d' },
-  { label: 'Lab tests ordered', value: '214', delta: '+8%', positive: true, icon: FlaskConical, iconBg: 'rgba(217,164,65,0.10)', iconColor: '#d9a441' },
-];
-
-const chartCard = {
-  background: 'var(--surface)', border: '1px solid var(--border-card)', borderRadius: 12, padding: 20,
+// ── Shared components ────────────────────────────────────────────────────────
+const card = {
+  background: 'var(--surface)',
+  border: '1px solid var(--border-card)',
+  borderRadius: 12,
+  padding: 20,
 };
 
-export default function Analytics() {
+function CardHeader({ icon: Icon, iconColor, title }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, animation: 'mv-fade 200ms ease both' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+      <Icon size={15} style={{ color: iconColor, flexShrink: 0 }} />
+      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg-on-light)' }}>{title}</div>
+    </div>
+  );
+}
+
+function HBar({ label, count, maxCount, color, suffix }) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+        <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--fg-on-light)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>{label}</span>
+        <span style={{ fontSize: 12, color: 'var(--fg-on-light-muted)', flexShrink: 0, marginLeft: 8 }}>{count} {suffix}</span>
+      </div>
+      <div style={{ height: 10, background: 'var(--surface-subtle)', borderRadius: 5, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${(count / maxCount) * 100}%`, background: color, borderRadius: 3, transition: 'width 600ms' }} />
+      </div>
+    </div>
+  );
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
+export default function Analytics() {
+  const [month, setMonth]       = useState(MONTH_OPTIONS[0].key);
+  const [dropOpen, setDropOpen] = useState(false);
+
+  const monthLabel = MONTH_OPTIONS.find(o => o.key === month)?.label ?? '';
+  const kpi   = MONTHLY_KPI[month]  ?? DEFAULT_KPI;
+  const wards = WARD_MONTHLY[month] ?? DEFAULT_WARDS;
+  const diags = DIAG_MONTHLY[month] ?? DEFAULT_DIAGS;
+  const bills = BILL_MONTHLY[month] ?? DEFAULT_BILLS;
+
+  const wardMax   = Math.max(...wards.map(w => w.admissions));
+  const diagMax   = Math.max(...diags.map(d => d.count));
+  const billTotal = bills.paid + bills.partial + bills.pending;
+  const pct = n => billTotal ? Math.round((n / billTotal) * 100) : 0;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, animation: 'mv-fade 200ms ease both' }}>
+
       {/* Header */}
-      <div>
-        <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-on-light-muted)', fontWeight: 600 }}>
-          Jan – Jun 2026
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
+        <div>
+          <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-on-light-muted)', fontWeight: 600 }}>Reports</div>
+          <h1 style={{ fontSize: 34, fontWeight: 300, letterSpacing: '-0.02em', margin: '8px 0 0', color: 'var(--fg-on-light)' }}>Analytics</h1>
+          <p style={{ margin: '6px 0 0', color: 'var(--fg-on-light-muted)', fontSize: 14 }}>
+            Monthly performance overview — {monthLabel}
+          </p>
         </div>
-        <h1 style={{ fontSize: 34, fontWeight: 300, letterSpacing: '-0.02em', margin: '8px 0 0', color: 'var(--fg-on-light)' }}>Analytics</h1>
-        <p style={{ margin: '6px 0 0', color: 'var(--fg-on-light-muted)', fontSize: 14 }}>6-month performance overview for BAPS Pramukh Swami Hospital</p>
+
+        {/* Month selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <span style={{ fontSize: 13, color: 'var(--fg-on-light-muted)', fontWeight: 500 }}>Select month:</span>
+          <div style={{ position: 'relative' }}>
+            <select
+              value={month}
+              onMouseDown={() => setDropOpen(o => !o)}
+              onChange={e => { setMonth(e.target.value); setDropOpen(false); }}
+              onBlur={() => setDropOpen(false)}
+              style={{ padding: '9px 36px 9px 14px', border: '1px solid var(--border-ui)', borderRadius: 8, background: 'var(--surface)', fontSize: 13, fontWeight: 500, color: 'var(--fg-on-light)', outline: 'none', cursor: 'pointer', appearance: 'none' }}
+            >
+              {MONTH_OPTIONS.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
+            </select>
+            <ChevronDown size={13} style={{ position: 'absolute', right: 10, top: '50%', transform: `translateY(-50%) rotate(${dropOpen ? '180deg' : '0deg'})`, transition: 'transform 180ms ease', color: 'var(--fg-on-light-muted)', pointerEvents: 'none' }} />
+          </div>
+        </div>
       </div>
 
-      {/* KPI row */}
+      {/* KPI strip */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-        {KPI_CARDS.map(k => {
-          const Icon = k.icon;
-          return (
-            <div key={k.label} className="kpi-card">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                <div style={{ width: 38, height: 38, background: k.iconBg, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: k.iconColor }}>
-                  <Icon size={18} />
-                </div>
-                <span style={{ fontSize: 11, color: '#15803d', background: 'rgba(78,179,116,0.12)', padding: '3px 8px', borderRadius: 10, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 3 }}>
-                  <TrendingUp size={10} /> {k.delta}
-                </span>
-              </div>
-              <div style={{ fontSize: 32, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--fg-on-light)', lineHeight: 1 }}>{k.value}</div>
-              <div style={{ fontSize: 13, color: 'var(--fg-on-light-muted)', marginTop: 6 }}>{k.label}</div>
-            </div>
-          );
-        })}
+
+        <div style={card}>
+          <div style={{ width: 30, height: 30, background: 'rgba(78,179,116,0.10)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+            <UserPlus size={14} style={{ color: '#4eb374' }} />
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--fg-on-light-muted)', marginBottom: 6 }}>New Patients</div>
+          <div style={{ fontSize: 34, fontWeight: 300, color: 'var(--fg-on-light)', lineHeight: 1 }}>{kpi.patients}</div>
+          <div style={{ fontSize: 11, color: 'var(--fg-on-light-muted)', marginTop: 4 }}>Registered this month</div>
+        </div>
+
+        <div style={card}>
+          <div style={{ width: 30, height: 30, background: 'rgba(8,145,178,0.10)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+            <BedDouble size={14} style={{ color: '#0891b2' }} />
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--fg-on-light-muted)', marginBottom: 6 }}>IPD Admissions</div>
+          <div style={{ fontSize: 34, fontWeight: 300, color: 'var(--fg-on-light)', lineHeight: 1 }}>{kpi.admissions}</div>
+          <div style={{ fontSize: 11, color: 'var(--fg-on-light-muted)', marginTop: 4 }}>Admitted this month</div>
+        </div>
+
+        <div style={card}>
+          <div style={{ width: 30, height: 30, background: 'rgba(153,95,47,0.10)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+            <LogOut size={14} style={{ color: '#995f2f' }} />
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--fg-on-light-muted)', marginBottom: 6 }}>Discharged</div>
+          <div style={{ fontSize: 34, fontWeight: 300, color: 'var(--fg-on-light)', lineHeight: 1 }}>{kpi.discharged}</div>
+          <div style={{ fontSize: 11, color: 'var(--fg-on-light-muted)', marginTop: 4 }}>Avg LOS: {kpi.avgLos} days</div>
+        </div>
+
+        <div style={card}>
+          <div style={{ width: 30, height: 30, background: 'rgba(153,95,47,0.10)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+            <IndianRupee size={14} style={{ color: '#995f2f' }} />
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--fg-on-light-muted)', marginBottom: 6 }}>Revenue</div>
+          <div style={{ fontSize: 28, fontWeight: 300, color: '#15803d', lineHeight: 1 }}>{kpi.revenue}</div>
+          <div style={{ fontSize: 11, color: '#991b1b', marginTop: 4 }}>Outstanding: {kpi.outstanding}</div>
+        </div>
       </div>
 
-      {/* Charts row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-        {/* Admissions trend */}
-        <div style={chartCard}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg-on-light)', marginBottom: 4 }}>Admissions trend</div>
-          <div style={{ fontSize: 11, color: 'var(--fg-on-light-muted)', marginBottom: 20 }}>Monthly IPD admissions · Jan–Jun 2026</div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 120 }}>
-            {ADMISSION_DATA.map((v, i) => (
-              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, height: '100%', justifyContent: 'flex-end' }}>
-                <div style={{ fontSize: 11, color: 'var(--fg-on-light)', fontWeight: 500 }}>{v}</div>
-                <div style={{ width: '100%', background: '#0891b2', borderRadius: '4px 4px 0 0', height: `${(v / MAX_ADM) * 80}px`, opacity: i === ADMISSION_DATA.length - 1 ? 1 : 0.55 }} />
-                <div style={{ fontSize: 10, color: 'var(--fg-on-light-muted)' }}>{MONTHS[i]}</div>
+      {/* Row 1: Admissions by Ward + Top Diagnoses */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+
+        <div style={card}>
+          <CardHeader icon={BedDouble} iconColor="#0891b2" title="Admissions by Ward" />
+          {wards.map(w => (
+            <HBar key={w.ward} label={w.ward} count={w.admissions} maxCount={wardMax} color="#0891b2" suffix="admissions" />
+          ))}
+        </div>
+
+        <div style={card}>
+          <CardHeader icon={Stethoscope} iconColor="#995f2f" title="Top Diagnoses / Reasons" />
+          {diags.map(d => (
+            <HBar key={d.name} label={d.name} count={d.count} maxCount={diagMax} color="#995f2f" suffix="cases" />
+          ))}
+        </div>
+      </div>
+
+      {/* Row 2: Bill Collection Status + 6-Month Trend */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.8fr', gap: 16 }}>
+
+        {/* Bill Collection Status */}
+        <div style={card}>
+          <CardHeader icon={Receipt} iconColor="#995f2f" title="Bill Collection Status" />
+
+          {[
+            { label: 'Paid',    count: bills.paid,    color: '#4eb374', labelColor: '#15803d' },
+            { label: 'Partial', count: bills.partial, color: '#d9a441', labelColor: '#854d0e' },
+            { label: 'Pending', count: bills.pending, color: '#d95050', labelColor: '#991b1b' },
+          ].map(b => (
+            <div key={b.label} style={{ marginBottom: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+                <span style={{ fontSize: 12, fontWeight: 500, color: b.labelColor }}>{b.label}</span>
+                <span style={{ fontSize: 12, color: 'var(--fg-on-light-muted)' }}>{b.count} bills · {pct(b.count)}%</span>
               </div>
-            ))}
+              <div style={{ height: 10, background: 'var(--surface-subtle)', borderRadius: 5, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${pct(b.count)}%`, background: b.color, borderRadius: 5, transition: 'width 600ms' }} />
+              </div>
+            </div>
+          ))}
+
+          <div style={{ borderTop: '1px solid var(--border-card)', paddingTop: 14, fontSize: 12, color: 'var(--fg-on-light-muted)' }}>
+            Total bills this month: <strong style={{ color: 'var(--fg-on-light)' }}>{billTotal}</strong>
           </div>
         </div>
 
-        {/* Revenue trend */}
-        <div style={chartCard}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg-on-light)', marginBottom: 4 }}>Revenue trend</div>
-          <div style={{ fontSize: 11, color: 'var(--fg-on-light-muted)', marginBottom: 20 }}>Monthly collections · Jan–Jun 2026</div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 120 }}>
-            {REVENUE_DATA.map((v, i) => (
-              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, height: '100%', justifyContent: 'flex-end' }}>
-                <div style={{ fontSize: 10, color: 'var(--fg-on-light)', fontWeight: 500 }}>{fmt(v)}</div>
-                <div style={{ width: '100%', background: '#15803d', borderRadius: '4px 4px 0 0', height: `${(v / MAX_REV) * 80}px`, opacity: i === REVENUE_DATA.length - 1 ? 1 : 0.55 }} />
-                <div style={{ fontSize: 10, color: 'var(--fg-on-light-muted)' }}>{MONTHS[i]}</div>
+        {/* 6-Month Trend */}
+        <div style={card}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <TrendingUp size={15} style={{ color: '#4eb374', flexShrink: 0 }} />
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg-on-light)' }}>6-Month Trend</div>
+          </div>
+
+          {/* Legend */}
+          <div style={{ display: 'flex', gap: 16, fontSize: 11, color: 'var(--fg-on-light-muted)', marginBottom: 16 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 2, background: '#4eb374', display: 'inline-block' }} />
+              New Patients
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 2, background: '#0891b2', display: 'inline-block' }} />
+              IPD Admissions
+            </span>
+          </div>
+
+          {/* Bar chart */}
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, height: 80, paddingBottom: 4, borderBottom: '1px solid rgba(15,23,42,0.08)', marginBottom: 8 }}>
+            {TREND.map(t => (
+              <div key={t.month} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                <div style={{ width: '100%', display: 'flex', gap: 2, alignItems: 'flex-end', justifyContent: 'center' }}>
+                  <div style={{ width: '44%', height: `${(t.patients   / TREND_MAX) * 60}px`, background: '#4eb374', borderRadius: '2px 2px 0 0', transition: 'height 600ms' }} />
+                  <div style={{ width: '44%', height: `${(t.admissions / TREND_MAX) * 60}px`, background: '#0891b2', borderRadius: '2px 2px 0 0', transition: 'height 600ms' }} />
+                </div>
               </div>
+            ))}
+          </div>
+
+          {/* X-axis */}
+          <div style={{ display: 'flex', gap: 12 }}>
+            {TREND.map(t => (
+              <div key={t.month} style={{ flex: 1, textAlign: 'center', fontSize: 10, color: 'var(--fg-on-light-muted)', fontWeight: 500 }}>{t.month}</div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Bottom row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
-        {/* Ward occupancy */}
-        <div style={chartCard}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg-on-light)', marginBottom: 4 }}>Ward occupancy</div>
-          <div style={{ fontSize: 11, color: 'var(--fg-on-light-muted)', marginBottom: 16 }}>Current bed utilisation</div>
-          {WARD_OCCUPANCY.map(w => (
-            <div key={w.ward} style={{ marginBottom: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
-                <span style={{ color: 'var(--fg-on-light)' }}>{w.ward}</span>
-                <span style={{ color: 'var(--fg-on-light-muted)' }}>{w.occupied}/{w.beds}</span>
-              </div>
-              <div style={{ height: 6, background: 'var(--surface-subtle)', borderRadius: 3, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${(w.occupied / w.beds) * 100}%`, background: w.occupied / w.beds > 0.8 ? '#d95050' : '#0891b2', borderRadius: 3 }} />
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Billing breakdown */}
-        <div style={chartCard}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg-on-light)', marginBottom: 4 }}>Billing status</div>
-          <div style={{ fontSize: 11, color: 'var(--fg-on-light-muted)', marginBottom: 20 }}>Payment collection breakdown</div>
-          {BILLING_STATUS.map(b => (
-            <div key={b.label} style={{ marginBottom: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: b.color, display: 'inline-block' }} />
-                  <span style={{ color: 'var(--fg-on-light)' }}>{b.label}</span>
-                </span>
-                <span style={{ color: b.color, fontWeight: 600 }}>{b.value}%</span>
-              </div>
-              <div style={{ height: 8, background: 'var(--surface-subtle)', borderRadius: 4, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${b.value}%`, background: b.color, borderRadius: 4 }} />
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Top diagnoses */}
-        <div style={chartCard}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg-on-light)', marginBottom: 4 }}>Top diagnoses</div>
-          <div style={{ fontSize: 11, color: 'var(--fg-on-light-muted)', marginBottom: 16 }}>Most common this month</div>
-          {TOP_DIAGNOSES.map((d, i) => (
-            <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <div style={{ fontSize: 11, color: 'var(--fg-on-light-muted)', width: 16, textAlign: 'right', flexShrink: 0 }}>{i + 1}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, color: 'var(--fg-on-light)', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.name}</div>
-                <div style={{ height: 4, background: 'var(--surface-subtle)', borderRadius: 2, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${(d.count / MAX_DIAG) * 100}%`, background: '#baec55', borderRadius: 2 }} />
-                </div>
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--fg-on-light-muted)', flexShrink: 0, width: 24, textAlign: 'right' }}>{d.count}</div>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
