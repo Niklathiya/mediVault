@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   HeartPulse,
   LayoutDashboard,
@@ -102,6 +102,7 @@ function SectionLabel({ children }) {
 }
 
 export default function Sidebar() {
+  const navigate = useNavigate();
   const [teamOpen, setTeamOpen] = useState(false);
   const location = useLocation();
   const isTeamActive = [
@@ -228,14 +229,6 @@ export default function Sidebar() {
             sub="All digital records"
           />
           <SideNavItem to="/analytics" icon={BarChart2} label="Analytics" sub="Monthly reports" />
-
-          <SectionLabel>System</SectionLabel>
-          <SideNavItem
-            to="/settings"
-            icon={Settings}
-            label="Settings"
-            sub="Hospital &amp; ward config"
-          />
         </nav>
       </div>
 
@@ -279,6 +272,7 @@ export default function Sidebar() {
             </div>
           </div>
           <button
+            onClick={() => navigate('/settings')}
             style={{
               background: 'transparent',
               border: 'none',
