@@ -1158,14 +1158,6 @@ export default function Staff() {
           marginBottom: 20,
         }}
       >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'flex-end',
-          justifyContent: 'space-between',
-          marginBottom: 20,
-        }}
-      >
         <div>
           <div
             style={{
