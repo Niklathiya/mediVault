@@ -4,8 +4,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, FileText, ClipboardList, Pill, FlaskConical,
   Activity, Folder, Clock, Receipt, BedDouble, AlertTriangle,
-  Phone, Mail, MapPin, Calendar, User, Heart, Printer, Pencil,
-  AlertOctagon, Shield, X, Check,
+  Phone, Mail, MapPin, Calendar, User, Heart, Printer, Pencil, Plus,
+  AlertOctagon, Shield, X, Check, Trash2, ChevronRight, Eye,
 } from 'lucide-react';
 
 // ── DATA ─────────────────────────────────────────────────────────────────────
@@ -14,62 +14,95 @@ const PATIENTS = {
   'PT-0128': {
     name: 'Kiran Desai', initials: 'KD', age: 34, sex: 'Male', blood: 'B+',
     phone: '98765 43210', email: 'kiran.desai@email.com',
-    address: '12, Nehru Nagar, Ahmedabad',
+    address: '12 MG Road, Bengaluru, Karnataka 560001',
     registered: '10 Jun 2026', status: 'active',
     hasAllergy: false, allergies: [],
     tags: ['Diabetes', 'Hypertension'],
     insurance: 'Star Health · POL-2024-98765',
     emergency: { name: 'Priya Desai', relation: 'Spouse', phone: '98765 43211' },
     visits: [
-      { date: '22 Jun 2026', doctor: 'Dr. Priya Mehta', dept: 'General', notes: 'Blood sugar review, adjusted metformin dose.' },
-      { date: '08 Jun 2026', doctor: 'Dr. Priya Mehta', dept: 'General', notes: 'Routine checkup, BP controlled.' },
+      { id: 'V001', date: '2026-06-22', dateLabel: '22 Jun 2026', dateBig: '22', dateMonth: 'Jun 2026',
+        doctor: 'Dr. Priya Mehta', dept: 'General Medicine',
+        complaint: 'High blood sugar, fatigue, increased thirst',
+        diagnosis: 'Type 2 Diabetes — uncontrolled',
+        treatment: 'Metformin dose adjusted, dietary counselling',
+        notes: 'Patient advised to maintain food diary and follow up in 4 weeks.' },
+      { id: 'V002', date: '2026-06-08', dateLabel: '08 Jun 2026', dateBig: '08', dateMonth: 'Jun 2026',
+        doctor: 'Dr. Priya Mehta', dept: 'General Medicine',
+        complaint: 'Routine checkup, BP monitoring',
+        diagnosis: 'Hypertension — controlled',
+        treatment: 'Continue Amlodipine 5mg, low-sodium diet',
+        notes: 'BP improved since last visit. Weight stable.' },
     ],
     prescriptions: [
-      { date: '22 Jun 2026', drug: 'Metformin 500mg', dosage: '1-0-1', duration: '30 days', doctor: 'Dr. Priya Mehta' },
-      { date: '22 Jun 2026', drug: 'Amlodipine 5mg', dosage: '1-0-0', duration: '30 days', doctor: 'Dr. Priya Mehta' },
+      { id: 'RX001', date: '22 Jun 2026', drug: 'Metformin 500mg', dosage: '1-0-1', frequency: 'Twice daily', duration: '30 days', doctor: 'Dr. Priya Mehta' },
+      { id: 'RX002', date: '22 Jun 2026', drug: 'Amlodipine 5mg', dosage: '1-0-0', frequency: 'Once daily', duration: '30 days', doctor: 'Dr. Priya Mehta' },
+      { id: 'RX003', date: '08 Jun 2026', drug: 'Telmisartan 40mg', dosage: '0-0-1', frequency: 'Once daily (evening)', duration: '30 days', doctor: 'Dr. Priya Mehta' },
     ],
     labs: [
-      { date: '20 Jun 2026', test: 'HbA1c', result: '7.2%', normal: '< 5.7%', status: 'High', statusColor: '#d9a441', statusBg: 'rgba(217,164,65,0.1)' },
-      { date: '20 Jun 2026', test: 'Fasting Glucose', result: '126 mg/dL', normal: '70–100', status: 'High', statusColor: '#d9a441', statusBg: 'rgba(217,164,65,0.1)' },
-      { date: '20 Jun 2026', test: 'Creatinine', result: '0.9 mg/dL', normal: '0.6–1.2', status: 'Normal', statusColor: '#15803d', statusBg: 'rgba(78,179,116,0.1)' },
+      { id: 'L001', date: '20 Jun 2026', test: 'HbA1c', result: '7.2%', normal: '< 5.7%', status: 'High', statusColor: '#d9a441', statusBg: 'rgba(217,164,65,0.1)', doctor: 'Dr. Priya Mehta' },
+      { id: 'L002', date: '20 Jun 2026', test: 'Fasting Glucose', result: '126 mg/dL', normal: '70–100', status: 'High', statusColor: '#d9a441', statusBg: 'rgba(217,164,65,0.1)', doctor: 'Dr. Priya Mehta' },
+      { id: 'L003', date: '20 Jun 2026', test: 'Creatinine', result: '0.9 mg/dL', normal: '0.6–1.2', status: 'Normal', statusColor: '#15803d', statusBg: 'rgba(78,179,116,0.1)', doctor: 'Dr. Priya Mehta' },
+      { id: 'L004', date: '20 Jun 2026', test: 'Lipid Profile (LDL)', result: '138 mg/dL', normal: '< 100', status: 'High', statusColor: '#d9a441', statusBg: 'rgba(217,164,65,0.1)', doctor: 'Dr. Priya Mehta' },
     ],
     vitals: [
-      { date: '22 Jun 2026', bp: '138/88', pulse: '78', spo2: '98%', temp: '98.4°F', wt: '72 kg' },
-      { date: '08 Jun 2026', bp: '142/90', pulse: '82', spo2: '97%', temp: '98.6°F', wt: '73 kg' },
+      { id: 'VT001', date: '22 Jun 2026', bp: '138/88', bpSys: 138, bpDia: 88, pulse: '78', spo2: '98', temp: '98.4', wt: '72' },
+      { id: 'VT002', date: '08 Jun 2026', bp: '142/90', bpSys: 142, bpDia: 90, pulse: '82', spo2: '97', temp: '98.6', wt: '73' },
     ],
     billings: [
-      { id: 'INV-2026-0035', date: '22 Jun 2026', amount: 1200, paid: 1200, status: 'Paid' },
-      { id: 'INV-2026-0020', date: '08 Jun 2026', amount: 800, paid: 800, status: 'Paid' },
+      { id: 'INV-2026-0035', date: '22 Jun 2026', type: 'OPD', amount: 1200, paid: 1200, status: 'paid' },
+      { id: 'INV-2026-0020', date: '08 Jun 2026', type: 'OPD', amount: 800, paid: 800, status: 'paid' },
     ],
-    admissions: [],
+    admissions: [
+      { id: 'IPD-2026-042', ipNo: 'IP/2026/042', admittedOn: '2026-06-23', admittedTime: '09:15 AM',
+        admittingDoctor: 'Dr. Priya Mehta', ward: 'General', bedNo: '4A',
+        dischargedOn: null, dischargedTime: null, status: 'admitted' },
+    ],
+    documents: [
+      { id: 'DOC001', name: 'Blood Report June 2026', type: 'Lab Report', date: '20 Jun 2026', notes: 'HbA1c and FBS panel' },
+      { id: 'DOC002', name: 'ECG Report', type: 'Cardiology', date: '08 Jun 2026', notes: '' },
+    ],
   },
   'PT-0127': {
     name: 'Meena Agarwal', initials: 'MA', age: 52, sex: 'Female', blood: 'O+',
     phone: '87654 32109', email: 'meena.agarwal@email.com',
-    address: '45, Shastri Nagar, Jaipur',
+    address: '45 Civil Lines, Allahabad, UP 211001',
     registered: '08 Jun 2026', status: 'admitted',
-    hasAllergy: true, allergies: ['Penicillin', 'Sulfa drugs'],
-    tags: ['Hypertension'],
-    insurance: 'HDFC ERGO · POL-2023-54321',
-    emergency: { name: 'Rajesh Agarwal', relation: 'Husband', phone: '87654 32110' },
+    hasAllergy: true, allergies: ['Penicillin', 'Aspirin'],
+    tags: ['Hypertension', 'Cardiac'],
+    insurance: 'Max Bupa · POL-002345',
+    emergency: { name: 'Ramesh Agarwal', relation: 'Husband', phone: '87654 00002' },
     visits: [
-      { date: '08 Jun 2026', doctor: 'Dr. Arjun Rao', dept: 'Cardiology', notes: 'BP elevated, admitted for monitoring.' },
+      { id: 'V003', date: '2026-06-08', dateLabel: '08 Jun 2026', dateBig: '08', dateMonth: 'Jun 2026',
+        doctor: 'Dr. Arjun Rao', dept: 'Cardiology',
+        complaint: 'Chest pain, shortness of breath',
+        diagnosis: 'Hypertensive crisis, suspected STEMI',
+        treatment: 'Admitted to ICU for monitoring and cardiac intervention',
+        notes: 'Referred to ICU. Cardiac team on standby.' },
     ],
     prescriptions: [
-      { date: '08 Jun 2026', drug: 'Amlodipine 10mg', dosage: '1-0-0', duration: '30 days', doctor: 'Dr. Arjun Rao' },
-      { date: '08 Jun 2026', drug: 'Losartan 50mg', dosage: '1-0-0', duration: '30 days', doctor: 'Dr. Arjun Rao' },
+      { id: 'RX004', date: '08 Jun 2026', drug: 'Amlodipine 10mg', dosage: '1-0-0', frequency: 'Once daily', duration: '30 days', doctor: 'Dr. Arjun Rao' },
+      { id: 'RX005', date: '08 Jun 2026', drug: 'Losartan 50mg', dosage: '1-0-0', frequency: 'Once daily', duration: '30 days', doctor: 'Dr. Arjun Rao' },
+      { id: 'RX006', date: '22 Jun 2026', drug: 'Atorvastatin 40mg', dosage: '0-0-1', frequency: 'Once daily (evening)', duration: '30 days', doctor: 'Dr. Arjun Rao' },
     ],
     labs: [
-      { date: '09 Jun 2026', test: 'ECG', result: 'Sinus rhythm', normal: 'Normal sinus', status: 'Normal', statusColor: '#15803d', statusBg: 'rgba(78,179,116,0.1)' },
+      { id: 'L005', date: '09 Jun 2026', test: 'ECG', result: 'Sinus rhythm', normal: 'Normal sinus', status: 'Normal', statusColor: '#15803d', statusBg: 'rgba(78,179,116,0.1)', doctor: 'Dr. Arjun Rao' },
+      { id: 'L006', date: '09 Jun 2026', test: 'Troponin I', result: '0.12 ng/mL', normal: '< 0.04', status: 'High', statusColor: '#d95050', statusBg: 'rgba(217,80,80,0.1)', doctor: 'Dr. Arjun Rao' },
     ],
     vitals: [
-      { date: '09 Jun 2026', bp: '158/98', pulse: '88', spo2: '96%', temp: '99.1°F', wt: '68 kg' },
+      { id: 'VT003', date: '22 Jun 2026', bp: '148/94', bpSys: 148, bpDia: 94, pulse: '84', spo2: '96', temp: '99.1', wt: '68' },
+      { id: 'VT004', date: '09 Jun 2026', bp: '158/98', bpSys: 158, bpDia: 98, pulse: '88', spo2: '96', temp: '99.1', wt: '68' },
     ],
     billings: [
-      { id: 'INV-2026-0040', date: '08 Jun 2026', amount: 5500, paid: 0, status: 'Pending' },
+      { id: 'INV-2026-0040', date: '08 Jun 2026', type: 'IPD', amount: 55000, paid: 20000, status: 'partial' },
     ],
     admissions: [
-      { id: 'ADM-0012', ward: 'Semi-Private', bed: 'B-204', admitted: '08 Jun 2026', doctor: 'Dr. Arjun Rao', status: 'Admitted' },
+      { id: 'IPD-2026-041', ipNo: 'IP/2026/041', admittedOn: '2026-06-22', admittedTime: '02:30 PM',
+        admittingDoctor: 'Dr. Arjun Rao', ward: 'ICU', bedNo: '2',
+        dischargedOn: null, dischargedTime: null, status: 'admitted' },
+    ],
+    documents: [
+      { id: 'DOC003', name: 'ECG Strip — 09 Jun 2026', type: 'Cardiology', date: '09 Jun 2026', notes: 'STEMI pattern' },
     ],
   },
 };
@@ -79,19 +112,19 @@ const DEFAULT_PATIENT = {
   phone: '-', email: '-', address: '-', registered: '-',
   status: 'active', hasAllergy: false, allergies: [], tags: [],
   insurance: '', emergency: { name: '-', relation: '-', phone: '-' },
-  visits: [], prescriptions: [], labs: [], vitals: [], billings: [], admissions: [],
+  visits: [], prescriptions: [], labs: [], vitals: [], billings: [], admissions: [], documents: [],
 };
 
 const TABS = [
   { id: 'overview',      label: 'Overview',      icon: FileText },
-  { id: 'visits',        label: 'Visits',         icon: ClipboardList, countKey: 'visits' },
-  { id: 'prescriptions', label: 'Prescriptions',  icon: Pill,          countKey: 'prescriptions' },
-  { id: 'labs',          label: 'Lab Results',    icon: FlaskConical,  countKey: 'labs' },
-  { id: 'vitals',        label: 'Vitals',         icon: Activity,      countKey: 'vitals' },
-  { id: 'documents',     label: 'Documents',      icon: Folder },
+  { id: 'visits',        label: 'Visits',         icon: ClipboardList,  countKey: 'visits' },
+  { id: 'prescriptions', label: 'Prescriptions',  icon: Pill,           countKey: 'prescriptions' },
+  { id: 'labs',          label: 'Lab Results',    icon: FlaskConical,   countKey: 'labs' },
+  { id: 'vitals',        label: 'Vitals',         icon: Activity,       countKey: 'vitals' },
+  { id: 'documents',     label: 'Documents',      icon: Folder,         countKey: 'documents' },
   { id: 'timeline',      label: 'Timeline',       icon: Clock },
-  { id: 'billing',       label: 'Billing',        icon: Receipt,       countKey: 'billings' },
-  { id: 'admissions',    label: 'IPD Admissions', icon: BedDouble,     countKey: 'admissions' },
+  { id: 'billing',       label: 'Billing',        icon: Receipt,        countKey: 'billings' },
+  { id: 'admissions',    label: 'IPD Admissions', icon: BedDouble,      countKey: 'admissions' },
 ];
 
 const STATUS_BADGE = {
@@ -113,28 +146,66 @@ const inp = {
   borderRadius: 6, fontFamily: 'inherit', fontSize: 14, outline: 'none',
   background: 'var(--bg-canvas)', color: 'var(--fg-on-light)', boxSizing: 'border-box',
 };
-
 const lbl = {
   display: 'block', fontSize: 11, fontWeight: 600,
   textTransform: 'uppercase', letterSpacing: '0.06em',
   color: 'var(--fg-on-light-muted)', marginBottom: 4,
 };
 
-function InfoRow({ label, value, icon: Icon }) {
+const TODAY = '2026-06-28';
+
+const fmtDate = (iso) => {
+  if (!iso) return '—';
+  const [y, m, d] = iso.split('-');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${d} ${months[+m - 1]} ${y}`;
+};
+
+const daysBetween = (a, b) =>
+  Math.max(1, Math.floor((new Date(b || TODAY) - new Date(a)) / 86400000) + 1);
+
+// ── ICON BUTTONS ─────────────────────────────────────────────────────────────
+
+function ActionBtn({ icon: Icon, onClick, danger, title }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 14 }}>
-      {Icon && <Icon size={14} color={C.muted} style={{ marginTop: 2, flexShrink: 0 }} />}
-      <div>
-        <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: C.muted, marginBottom: 2 }}>
-          {label}
-        </div>
-        <div style={{ fontSize: 13, color: C.text }}>{value}</div>
-      </div>
+    <button
+      title={title}
+      onClick={onClick}
+      style={{
+        background: 'transparent',
+        border: `1px solid ${danger ? 'rgba(217,80,80,0.30)' : 'var(--border-ui)'}`,
+        color: danger ? '#d95050' : C.text,
+        width: 30, height: 30, borderRadius: 6,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        cursor: 'pointer', flexShrink: 0,
+      }}
+    >
+      <Icon size={13} />
+    </button>
+  );
+}
+
+function SectionTitle({ children }) {
+  return (
+    <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 14 }}>
+      {children}
     </div>
   );
 }
 
-// ── EMPTY EDIT FORM (never null — keeps React Compiler safe) ─────────────────
+function InfoRow({ label, value, icon: Icon }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', columnGap: 12, marginBottom: 10, alignItems: 'start' }}>
+      <div style={{ fontSize: 12, color: C.muted, display: 'flex', alignItems: 'center', gap: 5 }}>
+        {Icon && <Icon size={12} color={C.muted} />}
+        {label}
+      </div>
+      <div style={{ fontSize: 13, color: C.text }}>{value}</div>
+    </div>
+  );
+}
+
+// ── EMPTY EDIT FORM ───────────────────────────────────────────────────────────
 
 const EMPTY_EDIT = {
   name: '', age: '', sex: 'Male', blood: 'O+', phone: '', email: '',
@@ -147,44 +218,30 @@ const EMPTY_EDIT = {
 export default function PatientDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [tab, setTab] = useState('overview');
-  const [patient, setPatient] = useState(PATIENTS[id] ?? { ...DEFAULT_PATIENT, name: id });
+  const [tab, setTab]         = useState('overview');
+  const [patient, setPatient] = useState(PATIENTS[id] ?? { ...DEFAULT_PATIENT });
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState(null);
 
-  // React Compiler safe: pre-compute ALL derived values before any JSX.
-  // ef is always an object (never null) so the compiler can safely hoist ef.* accesses.
   const patientAllergies = patient.allergies ?? [];
-  const patientTags = patient.tags ?? [];
-  const statusBadge = STATUS_BADGE[patient.status] ?? STATUS_BADGE.active;
-  const ef = editForm !== null ? editForm : EMPTY_EDIT;
-  const isEditOpen = editOpen;
+  const patientTags      = patient.tags ?? [];
+  const statusBadge      = STATUS_BADGE[patient.status] ?? STATUS_BADGE.active;
+  const ef               = editForm !== null ? editForm : EMPTY_EDIT;
+  const isEditOpen       = editOpen;
 
   const openEdit = () => {
     setEditForm({
-      name: patient.name,
-      age: String(patient.age),
-      sex: patient.sex,
-      blood: patient.blood,
-      phone: patient.phone,
-      email: patient.email,
-      address: patient.address,
-      allergies: patientAllergies.join(', '),
-      tags: patientTags.join(', '),
-      emergencyName: patient.emergency.name,
-      emergencyRelation: patient.emergency.relation,
-      emergencyPhone: patient.emergency.phone,
-      insurance: patient.insurance || '',
+      name: patient.name, age: String(patient.age), sex: patient.sex, blood: patient.blood,
+      phone: patient.phone, email: patient.email, address: patient.address,
+      allergies: patientAllergies.join(', '), tags: patientTags.join(', '),
+      emergencyName: patient.emergency.name, emergencyRelation: patient.emergency.relation,
+      emergencyPhone: patient.emergency.phone, insurance: patient.insurance || '',
     });
     setEditOpen(true);
   };
 
-  const closeEdit = () => {
-    setEditOpen(false);
-    setEditForm(null);
-  };
-
-  const setField = (k, v) => setEditForm((f) => ({ ...f, [k]: v }));
+  const closeEdit = () => { setEditOpen(false); setEditForm(null); };
+  const setField  = (k, v) => setEditForm((f) => ({ ...f, [k]: v }));
 
   const saveEdit = () => {
     if (!editForm) return;
@@ -193,158 +250,107 @@ export default function PatientDetail() {
       ...prev,
       name: editForm.name || prev.name,
       age: parseInt(editForm.age) || prev.age,
-      sex: editForm.sex,
-      blood: editForm.blood,
-      phone: editForm.phone,
-      email: editForm.email,
-      address: editForm.address,
-      allergies: newAllergies,
-      hasAllergy: newAllergies.length > 0,
+      sex: editForm.sex, blood: editForm.blood,
+      phone: editForm.phone, email: editForm.email, address: editForm.address,
+      allergies: newAllergies, hasAllergy: newAllergies.length > 0,
       tags: editForm.tags.split(',').map((s) => s.trim()).filter(Boolean),
-      emergency: {
-        name: editForm.emergencyName,
-        relation: editForm.emergencyRelation,
-        phone: editForm.emergencyPhone,
-      },
+      emergency: { name: editForm.emergencyName, relation: editForm.emergencyRelation, phone: editForm.emergencyPhone },
       insurance: editForm.insurance,
     }));
     closeEdit();
   };
 
+  const removeItem = (key, itemId) =>
+    setPatient((prev) => ({ ...prev, [key]: prev[key].filter((i) => i.id !== itemId) }));
+
   const fmt = (n) => '₹' + n.toLocaleString('en-IN');
 
+  // ── TIMELINE ──────────────────────────────────────────────────────────────
+  const timeline = [
+    ...patient.visits.map((v) => ({ date: v.date, label: v.dateLabel, type: 'Visit', icon: ClipboardList, color: '#0891b2', bg: 'rgba(8,145,178,0.10)', title: `OPD Visit — ${v.dept}`, detail: `${v.doctor} · ${v.complaint}` })),
+    ...patient.prescriptions.map((p) => ({ date: '2026-06-20', label: p.date, type: 'Prescription', icon: Pill, color: '#7c3aed', bg: 'rgba(124,58,237,0.10)', title: `Prescribed — ${p.drug}`, detail: `${p.dosage} · ${p.duration} · ${p.doctor}` })),
+    ...patient.labs.map((l) => ({ date: '2026-06-20', label: l.date, type: 'Lab', icon: FlaskConical, color: '#d9a441', bg: 'rgba(217,164,65,0.10)', title: `Lab — ${l.test}`, detail: `Result: ${l.result} (Normal: ${l.normal}) · ${l.status}` })),
+    ...patient.admissions.map((a) => ({ date: a.admittedOn, label: fmtDate(a.admittedOn), type: 'IPD Admission', icon: BedDouble, color: '#C2410C', bg: 'rgba(194,65,12,0.10)', title: `Admitted — ${a.ward} Ward · ${a.ipNo}`, detail: `${a.admittingDoctor} · Status: ${a.status}${a.dischargedOn ? ' · Discharged: ' + fmtDate(a.dischargedOn) : ''}` })),
+  ].sort((a, b) => b.date.localeCompare(a.date));
+
   const printPatient = () => {
-    const fmtLocal = (n) => '₹' + n.toLocaleString('en-IN');
-    const visitsHtml = patient.visits.length === 0
-      ? '<p class="empty">No visits recorded.</p>'
-      : patient.visits.map((v) => `<div class="item"><div class="item-hd"><strong>${v.date}</strong><span class="muted">${v.doctor} &middot; ${v.dept}</span></div><p class="muted" style="margin:4px 0 0;">${v.notes}</p></div>`).join('');
-    const rxHtml = patient.prescriptions.length === 0
-      ? '<p class="empty">No prescriptions.</p>'
-      : `<table><tr><th>Drug</th><th>Dosage</th><th>Duration</th><th>Prescribed by</th><th>Date</th></tr>${patient.prescriptions.map((r) => `<tr><td>${r.drug}</td><td>${r.dosage}</td><td>${r.duration}</td><td>${r.doctor}</td><td>${r.date}</td></tr>`).join('')}</table>`;
-    const labsHtml = patient.labs.length === 0
-      ? '<p class="empty">No lab results.</p>'
-      : `<table><tr><th>Test</th><th>Result</th><th>Normal Range</th><th>Status</th><th>Date</th></tr>${patient.labs.map((l) => `<tr><td>${l.test}</td><td>${l.result}</td><td>${l.normal}</td><td>${l.status}</td><td>${l.date}</td></tr>`).join('')}</table>`;
-    const vitalsHtml = patient.vitals.length === 0
-      ? '<p class="empty">No vitals recorded.</p>'
-      : `<table><tr><th>Date</th><th>BP</th><th>Pulse</th><th>SpO2</th><th>Temp</th><th>Weight</th></tr>${patient.vitals.map((v) => `<tr><td>${v.date}</td><td>${v.bp}</td><td>${v.pulse} bpm</td><td>${v.spo2}</td><td>${v.temp}</td><td>${v.wt}</td></tr>`).join('')}</table>`;
-    const billHtml = patient.billings.length === 0
-      ? '<p class="empty">No billing records.</p>'
-      : `<table><tr><th>Invoice</th><th>Date</th><th>Amount</th><th>Paid</th><th>Status</th></tr>${patient.billings.map((b) => `<tr><td>${b.id}</td><td>${b.date}</td><td>${fmtLocal(b.amount)}</td><td>${fmtLocal(b.paid)}</td><td>${b.status}</td></tr>`).join('')}</table>`;
-    const admHtml = patient.admissions.length === 0
-      ? '<p class="empty">No admissions on record.</p>'
-      : `<table><tr><th>ID</th><th>Ward</th><th>Bed</th><th>Admitted</th><th>Doctor</th><th>Status</th></tr>${patient.admissions.map((a) => `<tr><td>${a.id}</td><td>${a.ward}</td><td>${a.bed}</td><td>${a.admitted}</td><td>${a.doctor}</td><td>${a.status}</td></tr>`).join('')}</table>`;
-
     const w = window.open('', '_blank');
-    w.document.write(`<!DOCTYPE html><html><head><title>Patient Record – ${patient.name}</title><style>
-      *{box-sizing:border-box;}
-      body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:32px;color:#0f172a;max-width:960px;margin:0 auto;}
-      h1{font-size:22px;margin:0 0 4px;font-weight:600;}
-      .meta{font-size:13px;color:#64748b;display:flex;gap:16px;flex-wrap:wrap;margin:4px 0 20px;}
-      h2{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin:24px 0 8px;padding-bottom:6px;border-bottom:1px solid #e2e8f0;}
-      .demo{display:grid;grid-template-columns:140px 1fr;row-gap:6px;font-size:13px;margin-bottom:8px;}
-      .demo-lbl{color:#64748b;}
-      table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:4px;}
-      th{text-align:left;padding:7px 10px;background:#f1f5f9;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:#64748b;font-weight:600;}
-      td{padding:8px 10px;border-top:1px solid #e2e8f0;}
-      .item{margin-bottom:10px;padding:12px;border:1px solid #e2e8f0;border-radius:6px;}
-      .item-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:13px;}
-      .muted{color:#64748b;font-size:13px;}
-      .empty{color:#64748b;font-size:13px;margin:4px 0;}
-      .allergy-banner{background:rgba(217,80,80,0.06);border:1px solid rgba(217,80,80,0.28);border-left:4px solid #d95050;border-radius:0 6px 6px 0;padding:10px 14px;margin-bottom:20px;}
-      @media print{body{padding:16px;}@page{margin:16mm;}}
-    </style></head><body>
-      <h1>${patient.name}</h1>
-      <div class="meta">
-        <span>${id}</span><span>${patient.age} yrs, ${patient.sex}</span>
-        <span>Blood ${patient.blood}</span><span>${patient.phone}</span>
-        <span>Reg ${patient.registered}</span>
-      </div>
-      ${patientAllergies.length > 0 ? `<div class="allergy-banner"><strong style="font-size:13px;color:#a13030;letter-spacing:0.04em;">ALLERGY ALERT</strong><div style="font-size:13px;color:#7a2424;margin-top:3px;">${patientAllergies.join(' &middot; ')}</div></div>` : ''}
-
-      <h2>Demographics</h2>
-      <div class="demo">
-        <span class="demo-lbl">Full name</span><span>${patient.name}</span>
-        <span class="demo-lbl">Age / Sex</span><span>${patient.age} yrs, ${patient.sex}</span>
-        <span class="demo-lbl">Blood group</span><span>${patient.blood}</span>
-        <span class="demo-lbl">Phone</span><span>${patient.phone}</span>
-        <span class="demo-lbl">Email</span><span>${patient.email}</span>
-        <span class="demo-lbl">Address</span><span>${patient.address}</span>
-        ${patient.insurance ? `<span class="demo-lbl">Insurance</span><span>${patient.insurance}</span>` : ''}
-        <span class="demo-lbl">Emergency</span><span>${patient.emergency.name} (${patient.emergency.relation}) &ndash; ${patient.emergency.phone}</span>
-      </div>
-
-      <h2>Visits</h2>${visitsHtml}
-      <h2>Prescriptions</h2>${rxHtml}
-      <h2>Lab Results</h2>${labsHtml}
-      <h2>Vitals</h2>${vitalsHtml}
-      <h2>Billing</h2>${billHtml}
-      <h2>IPD Admissions</h2>${admHtml}
-      <script>window.onload=()=>{window.print();}</script>
-    </body></html>`);
+    w.document.write(`<!DOCTYPE html><html><head><title>Patient — ${patient.name}</title>
+    <style>body{font-family:sans-serif;padding:32px;color:#0f172a;max-width:960px;margin:0 auto;}
+    h1{font-size:22px;margin:0 0 4px;}h2{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin:24px 0 8px;padding-bottom:6px;border-bottom:1px solid #e2e8f0;}
+    table{width:100%;border-collapse:collapse;font-size:13px;}th{text-align:left;padding:7px 10px;background:#f1f5f9;font-size:11px;text-transform:uppercase;color:#64748b;}
+    td{padding:8px 10px;border-top:1px solid #e2e8f0;}.muted{color:#64748b;}</style></head><body>
+    <h1>${patient.name}</h1>
+    <p class="muted">${id} · ${patient.age} yrs, ${patient.sex} · Blood ${patient.blood} · ${patient.phone} · Reg ${patient.registered}</p>
+    ${patientAllergies.length ? `<p style="color:#a13030;font-weight:600;">⚠ ALLERGIES: ${patientAllergies.join(', ')}</p>` : ''}
+    <h2>Visits</h2><table><tr><th>Date</th><th>Doctor</th><th>Complaint</th><th>Diagnosis</th></tr>
+    ${patient.visits.map((v) => `<tr><td>${v.dateLabel}</td><td>${v.doctor}</td><td>${v.complaint}</td><td>${v.diagnosis}</td></tr>`).join('')}</table>
+    <h2>Prescriptions</h2><table><tr><th>Drug</th><th>Dosage</th><th>Frequency</th><th>Duration</th><th>Doctor</th></tr>
+    ${patient.prescriptions.map((r) => `<tr><td>${r.drug}</td><td>${r.dosage}</td><td>${r.frequency}</td><td>${r.duration}</td><td>${r.doctor}</td></tr>`).join('')}</table>
+    <h2>Lab Results</h2><table><tr><th>Test</th><th>Result</th><th>Normal Range</th><th>Status</th><th>Date</th></tr>
+    ${patient.labs.map((l) => `<tr><td>${l.test}</td><td>${l.result}</td><td>${l.normal}</td><td>${l.status}</td><td>${l.date}</td></tr>`).join('')}</table>
+    <h2>Vitals</h2><table><tr><th>Date</th><th>BP</th><th>Pulse</th><th>SpO₂</th><th>Temp</th><th>Weight</th></tr>
+    ${patient.vitals.map((v) => `<tr><td>${v.date}</td><td>${v.bp}</td><td>${v.pulse} bpm</td><td>${v.spo2}%</td><td>${v.temp}°F</td><td>${v.wt} kg</td></tr>`).join('')}</table>
+    <h2>IPD Admissions</h2><table><tr><th>IP No.</th><th>Admitted</th><th>Doctor</th><th>Ward/Bed</th><th>Status</th></tr>
+    ${patient.admissions.map((a) => `<tr><td>${a.ipNo}</td><td>${fmtDate(a.admittedOn)}</td><td>${a.admittingDoctor}</td><td>${a.ward} · ${a.bedNo}</td><td>${a.status}</td></tr>`).join('')}</table>
+    <script>window.onload=()=>window.print();</script></body></html>`);
     w.document.close();
   };
 
   return (
     <div style={{ animation: 'mv-fade 200ms ease both' }}>
-      {/* Breadcrumb back button */}
+      {/* Breadcrumb */}
       <div style={{ marginBottom: 20 }}>
         <button
           onClick={() => navigate('/patients')}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            background: 'var(--surface)', border: '1px solid var(--border-card)',
-            borderRadius: 10, padding: '8px 14px', cursor: 'pointer',
-            fontSize: 13, color: C.primary, fontFamily: 'inherit',
-          }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '8px 14px', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}
         >
-          <ArrowLeft size={13} />
+          <ArrowLeft size={13} color={C.primary} />
           <span style={{ color: C.primary }}>All patients</span>
-          <span style={{ color: 'var(--fg-on-light-muted)', margin: '0 2px' }}>/</span>
-          <span style={{ color: 'var(--fg-on-light)', fontWeight: 500 }}>{patient.name}</span>
+          <span style={{ color: C.muted, margin: '0 2px' }}>/</span>
+          <span style={{ color: C.text, fontWeight: 500 }}>{patient.name}</span>
         </button>
       </div>
 
       {/* Header card */}
-      <div style={{ background: 'var(--surface)', border: `1px solid ${C.border}`, borderRadius: 14, padding: 24, marginBottom: 16 }}>
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: 24, marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18 }}>
           <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#0891b2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 300, color: 'white', flexShrink: 0 }}>
             {patient.initials}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
-              <h2 style={{ margin: 0, fontSize: 22, fontWeight: 600, color: C.text }}>{patient.name}</h2>
-              <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 10, background: statusBadge.bg, color: statusBadge.color, fontWeight: 500 }}>
-                {statusBadge.label}
-              </span>
+              <h2 style={{ margin: 0, fontSize: 24, fontWeight: 500, letterSpacing: '-0.01em', color: C.text }}>{patient.name}</h2>
+              <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 10, background: statusBadge.bg, color: statusBadge.color, fontWeight: 500 }}>{statusBadge.label}</span>
               {patient.hasAllergy && (
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#d95050', background: 'rgba(217,80,80,0.10)', padding: '3px 8px', borderRadius: 10 }}>
-                  <AlertTriangle size={11} /> Allergies
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#d95050', background: 'rgba(217,80,80,0.10)', padding: '3px 8px', borderRadius: 10, fontWeight: 500 }}>
+                  <AlertTriangle size={11} /> Allergy
                 </span>
               )}
               {patientTags.map((t) => (
                 <span key={t} style={{ fontSize: 11, padding: '3px 8px', background: C.subtleBg, color: C.muted, borderRadius: 10 }}>{t}</span>
               ))}
             </div>
-            <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 13, color: C.muted }}>{id}</span>
-              <span style={{ fontSize: 13, color: C.muted }}>{patient.age} yrs, {patient.sex}</span>
-              <span style={{ fontSize: 13, color: C.muted }}>Blood <strong style={{ color: C.text }}>{patient.blood}</strong></span>
-              <span style={{ fontSize: 13, color: C.muted }}>{patient.phone}</span>
-              <span style={{ fontSize: 13, color: C.muted }}>Reg {patient.registered}</span>
+            <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', fontSize: 13, color: C.muted }}>
+              <span>{id}</span>
+              <span>{patient.age} yrs, {patient.sex}</span>
+              <span>Blood <strong style={{ color: C.text }}>{patient.blood}</strong></span>
+              <span>{patient.phone}</span>
+              <span>Reg {patient.registered}</span>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-            <button onClick={printPatient} style={{ background: 'transparent', color: C.text, border: '1px solid var(--border-strong)', padding: '8px 14px', borderRadius: 8, fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <button onClick={printPatient} style={{ background: 'transparent', color: C.text, border: `1px solid ${C.border}`, padding: '8px 14px', borderRadius: 8, fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <Printer size={14} /> Print
             </button>
-            <button onClick={openEdit} style={{ background: 'transparent', color: C.text, border: '1px solid var(--border-strong)', padding: '8px 14px', borderRadius: 8, fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <button onClick={openEdit} style={{ background: 'transparent', color: C.text, border: `1px solid ${C.border}`, padding: '8px 14px', borderRadius: 8, fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <Pencil size={14} /> Edit
             </button>
           </div>
         </div>
       </div>
 
-      {/* Allergy alert banner */}
+      {/* Allergy banner */}
       {patientAllergies.length > 0 && (
         <div style={{ background: 'rgba(217,80,80,0.06)', border: '1px solid rgba(217,80,80,0.28)', borderLeft: '4px solid #d95050', borderRadius: 8, padding: '14px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
           <AlertOctagon size={20} color="#d95050" style={{ flexShrink: 0 }} />
@@ -355,262 +361,506 @@ export default function PatientDetail() {
         </div>
       )}
 
-      {/* Tabs — hidden scrollbar */}
+      {/* Tabs */}
       <div className="tab-bar" style={{ overflowX: 'auto', marginBottom: 20, scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         {TABS.map((t) => {
-          const Icon = t.icon;
+          const Icon  = t.icon;
           const count = t.countKey ? patient[t.countKey]?.length : null;
           return (
             <button key={t.id} className={`tab-item${tab === t.id ? ' active' : ''}`} onClick={() => setTab(t.id)}>
-              <Icon size={14} />
-              {t.label}
+              <Icon size={14} /> {t.label}
               {count != null && <span style={{ opacity: 0.55 }}>{count}</span>}
             </button>
           );
         })}
       </div>
 
-      {/* Tab content */}
+      {/* ── TAB CONTENT ── */}
       <div key={tab} style={{ animation: 'mv-fade 180ms ease both' }}>
 
+        {/* ── OVERVIEW ── */}
         {tab === 'overview' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <div style={{ background: 'var(--surface)', border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 16 }}>Demographics</div>
-              <InfoRow label="Full name"   value={patient.name}                          icon={User} />
-              <InfoRow label="Age / Sex"   value={`${patient.age} yrs, ${patient.sex}`}  icon={User} />
-              <InfoRow label="Blood group" value={patient.blood}                          icon={Heart} />
-              <InfoRow label="Phone"       value={patient.phone}                          icon={Phone} />
-              <InfoRow label="Email"       value={patient.email}                          icon={Mail} />
-              <InfoRow label="Address"     value={patient.address}                        icon={MapPin} />
-              <InfoRow label="Registered"  value={patient.registered}                     icon={Calendar} />
-              {patient.insurance && <InfoRow label="Insurance" value={patient.insurance} icon={Shield} />}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ background: 'var(--surface)', border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 16 }}>Emergency contact</div>
-                <InfoRow label="Name"     value={patient.emergency.name} />
-                <InfoRow label="Relation" value={patient.emergency.relation} />
-                <InfoRow label="Phone"    value={patient.emergency.phone} icon={Phone} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 22 }}>
+                <SectionTitle>Demographics</SectionTitle>
+                <InfoRow label="Full name"   value={patient.name}                           icon={User} />
+                <InfoRow label="Age / Sex"   value={`${patient.age} yrs, ${patient.sex}`}   icon={User} />
+                <InfoRow label="Blood group" value={patient.blood}                           icon={Heart} />
+                <InfoRow label="Phone"       value={patient.phone}                           icon={Phone} />
+                <InfoRow label="Email"       value={patient.email}                           icon={Mail} />
+                <InfoRow label="Address"     value={patient.address}                         icon={MapPin} />
+                <InfoRow label="Registered"  value={patient.registered}                      icon={Calendar} />
               </div>
-              <div style={{ background: 'var(--surface)', border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 12 }}>Allergies</div>
-                {patientAllergies.length === 0 ? (
-                  <div style={{ fontSize: 13, color: C.muted }}>No known allergies recorded.</div>
-                ) : patientAllergies.map((a) => (
-                  <div key={a} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'rgba(217,80,80,0.06)', borderLeft: '3px solid #d95050', borderRadius: '0 6px 6px 0', marginBottom: 8 }}>
-                    <AlertTriangle size={13} color="#d95050" />
-                    <span style={{ fontSize: 13, color: C.text }}>{a}</span>
-                  </div>
-                ))}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 22 }}>
+                  <SectionTitle>Emergency contact</SectionTitle>
+                  <InfoRow label="Name"     value={patient.emergency.name} />
+                  <InfoRow label="Relation" value={patient.emergency.relation} />
+                  <InfoRow label="Phone"    value={patient.emergency.phone} icon={Phone} />
+                </div>
+                <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 22 }}>
+                  <SectionTitle>Insurance &amp; Allergies</SectionTitle>
+                  <InfoRow label="Insurance" value={patient.insurance || '—'} icon={Shield} />
+                  <InfoRow
+                    label="Allergies"
+                    value={patientAllergies.length ? patientAllergies.join(', ') : 'No known allergies'}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* IPD Admissions summary banner */}
+            <div
+              onClick={() => setTab('admissions')}
+              style={{ background: 'linear-gradient(135deg,rgba(8,145,178,0.06),rgba(8,145,178,0.02))', border: '1.5px solid rgba(8,145,178,0.25)', borderRadius: 12, padding: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 20, transition: 'all 120ms' }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#0891b2'; e.currentTarget.style.background = 'rgba(8,145,178,0.08)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(8,145,178,0.25)'; e.currentTarget.style.background = 'linear-gradient(135deg,rgba(8,145,178,0.06),rgba(8,145,178,0.02))'; }}
+            >
+              <div style={{ width: 44, height: 44, background: 'rgba(8,145,178,0.10)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <BedDouble size={22} color="#0891b2" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>IPD Admissions</div>
+                <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
+                  {patient.admissions.length} admission(s) on record · click to view full IPD history &amp; case files
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {patient.admissions.length > 0 && (
+                  <span style={{ fontSize: 12, padding: '4px 12px', borderRadius: 10, background: 'rgba(8,145,178,0.10)', color: '#0891b2', fontWeight: 600 }}>
+                    {patient.admissions[0].status === 'admitted' ? 'Currently admitted' : 'Last: ' + fmtDate(patient.admissions[0].admittedOn)}
+                  </span>
+                )}
+                <ChevronRight size={16} color={C.muted} />
               </div>
             </div>
           </div>
         )}
 
+        {/* ── VISITS ── */}
         {tab === 'visits' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div style={{ fontSize: 13, color: C.muted }}>Chronological clinical visit history</div>
+              <button className="btn-primary" style={{ fontSize: 13 }}>
+                <Plus size={14} /> Add visit
+              </button>
+            </div>
             {patient.visits.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 48, color: C.muted }}>No visits recorded.</div>
-            ) : patient.visits.map((v, i) => (
-              <div key={i} style={{ background: 'var(--surface)', border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{v.date}</div>
-                  <div style={{ fontSize: 12, color: C.muted }}>{v.doctor} · {v.dept}</div>
-                </div>
-                <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6 }}>{v.notes}</div>
+              <div style={{ textAlign: 'center', padding: 48, color: C.muted, background: C.surface, border: `1px dashed ${C.border}`, borderRadius: 12 }}>
+                <ClipboardList size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
+                <div style={{ fontSize: 14, marginTop: 8 }}>No visits recorded yet.</div>
               </div>
-            ))}
-          </div>
-        )}
-
-        {tab === 'prescriptions' && (
-          <div style={{ background: 'var(--surface)', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 0.6fr 0.6fr 1fr', padding: '12px 20px', background: C.subtleBg, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, fontWeight: 600 }}>
-              <div>Drug</div><div>Dosage</div><div>Duration</div><div>Prescribed by</div>
-            </div>
-            {patient.prescriptions.length === 0 ? (
-              <div style={{ padding: 32, textAlign: 'center', color: C.muted }}>No prescriptions on record.</div>
-            ) : patient.prescriptions.map((rx, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 0.6fr 0.6fr 1fr', padding: '13px 20px', borderTop: `1px solid ${C.border}` }}>
-                <div style={{ fontSize: 13, fontWeight: 500, color: C.text }}>{rx.drug}</div>
-                <div style={{ fontSize: 13, color: C.muted }}>{rx.dosage}</div>
-                <div style={{ fontSize: 13, color: C.muted }}>{rx.duration}</div>
-                <div style={{ fontSize: 12, color: C.muted }}>{rx.doctor} · {rx.date}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {tab === 'labs' && (
-          <div style={{ background: 'var(--surface)', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 0.7fr', padding: '12px 20px', background: C.subtleBg, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, fontWeight: 600 }}>
-              <div>Test</div><div>Result</div><div>Normal Range</div><div>Status</div>
-            </div>
-            {patient.labs.length === 0 ? (
-              <div style={{ padding: 32, textAlign: 'center', color: C.muted }}>No lab results on record.</div>
-            ) : patient.labs.map((lab, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 0.7fr', padding: '13px 20px', borderTop: `1px solid ${C.border}` }}>
+            ) : patient.visits.map((v) => (
+              <div key={v.id} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, marginBottom: 12, display: 'grid', gridTemplateColumns: '110px 1fr auto', gap: 20 }}>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: C.text }}>{lab.test}</div>
-                  <div style={{ fontSize: 11, color: C.muted }}>{lab.date}</div>
+                  <div style={{ fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, fontWeight: 600 }}>{v.dateMonth}</div>
+                  <div style={{ fontSize: 28, fontWeight: 300, letterSpacing: '-0.01em', color: C.text, marginTop: 2 }}>{v.dateBig}</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 8 }}>{v.doctor}</div>
+                  <div style={{ fontSize: 11, color: C.muted }}>{v.dept}</div>
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 500, color: C.text }}>{lab.result}</div>
-                <div style={{ fontSize: 12, color: C.muted }}>{lab.normal}</div>
                 <div>
-                  <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 10, background: lab.statusBg, color: lab.statusColor, fontWeight: 500 }}>
-                    {lab.status}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {tab === 'vitals' && (
-          <div style={{ background: 'var(--surface)', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr 1fr', padding: '12px 20px', background: C.subtleBg, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, fontWeight: 600 }}>
-              <div>Date</div><div>BP</div><div>Pulse</div><div>SpO₂</div><div>Temp</div><div>Weight</div>
-            </div>
-            {patient.vitals.length === 0 ? (
-              <div style={{ padding: 32, textAlign: 'center', color: C.muted }}>No vitals recorded.</div>
-            ) : patient.vitals.map((v, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr 1fr', padding: '13px 20px', borderTop: `1px solid ${C.border}` }}>
-                <div style={{ fontSize: 12, color: C.muted }}>{v.date}</div>
-                <div style={{ fontSize: 13, fontWeight: 500, color: C.text }}>{v.bp}</div>
-                <div style={{ fontSize: 13, color: C.text }}>{v.pulse} bpm</div>
-                <div style={{ fontSize: 13, color: C.text }}>{v.spo2}</div>
-                <div style={{ fontSize: 13, color: C.text }}>{v.temp}</div>
-                <div style={{ fontSize: 13, color: C.text }}>{v.wt}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {tab === 'billing' && (
-          <div style={{ background: 'var(--surface)', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 0.8fr', padding: '12px 20px', background: C.subtleBg, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, fontWeight: 600 }}>
-              <div>Invoice</div><div>Date</div><div>Amount</div><div>Status</div>
-            </div>
-            {patient.billings.length === 0 ? (
-              <div style={{ padding: 32, textAlign: 'center', color: C.muted }}>No bills on record.</div>
-            ) : patient.billings.map((b, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 0.8fr', padding: '13px 20px', borderTop: `1px solid ${C.border}` }}>
-                <div style={{ fontSize: 12, color: C.muted }}>{b.id}</div>
-                <div style={{ fontSize: 13, color: C.muted }}>{b.date}</div>
-                <div style={{ fontSize: 13, fontWeight: 500, color: C.text }}>{fmt(b.amount)}</div>
-                <div>
-                  <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 10, fontWeight: 500, background: b.status === 'Paid' ? 'rgba(78,179,116,0.1)' : 'rgba(217,164,65,0.1)', color: b.status === 'Paid' ? '#15803d' : '#854d0e' }}>
-                    {b.status}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {tab === 'admissions' && (
-          patient.admissions.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 64, color: C.muted }}>
-              <div style={{ fontSize: 32, marginBottom: 12, opacity: 0.3 }}>🛏</div>
-              <div style={{ fontSize: 14 }}>No admissions on record.</div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {patient.admissions.map((a, i) => (
-                <div key={i} style={{ background: 'var(--surface)', border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, fontWeight: 600, marginBottom: 4 }}>Chief complaint</div>
+                  <div style={{ fontSize: 14, color: C.text, marginBottom: 12 }}>{v.complaint}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: 14, color: C.text, marginBottom: 4 }}>{a.id}</div>
-                      <div style={{ fontSize: 13, color: C.muted }}>Ward: {a.ward} · Bed: {a.bed}</div>
-                      <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>Admitted {a.admitted} · {a.doctor}</div>
+                      <div style={{ fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, fontWeight: 600, marginBottom: 4 }}>Diagnosis</div>
+                      <div style={{ fontSize: 13, color: C.text }}>{v.diagnosis}</div>
                     </div>
-                    <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 10, background: 'rgba(8,145,178,0.12)', color: '#0891b2', fontWeight: 500 }}>
-                      {a.status}
-                    </span>
+                    <div>
+                      <div style={{ fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, fontWeight: 600, marginBottom: 4 }}>Treatment</div>
+                      <div style={{ fontSize: 13, color: C.text }}>{v.treatment}</div>
+                    </div>
+                  </div>
+                  {v.notes && (
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}`, fontSize: 13, color: C.muted, fontStyle: 'italic' }}>{v.notes}</div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <ActionBtn icon={Printer} title="Print" />
+                  <ActionBtn icon={Pencil}  title="Edit" />
+                  <ActionBtn icon={Trash2}  title="Delete" danger onClick={() => removeItem('visits', v.id)} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── PRESCRIPTIONS ── */}
+        {tab === 'prescriptions' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div style={{ fontSize: 13, color: C.muted }}>All medications prescribed to this patient</div>
+              <button className="btn-primary" style={{ fontSize: 13 }}><Plus size={14} /> Add prescription</button>
+            </div>
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.8fr 1fr 0.8fr 1.2fr 76px', padding: '12px 20px', background: C.subtleBg, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, fontWeight: 600 }}>
+                <div>Drug</div><div>Dosage</div><div>Frequency</div><div>Duration</div><div>Prescribed by</div><div></div>
+              </div>
+              {patient.prescriptions.length === 0 ? (
+                <div style={{ padding: 32, textAlign: 'center', color: C.muted, fontSize: 14 }}>No prescriptions on record.</div>
+              ) : patient.prescriptions.map((rx) => (
+                <div key={rx.id} style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.8fr 1fr 0.8fr 1.2fr 76px', padding: '14px 20px', borderTop: `1px solid ${C.border}`, alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: C.text }}>{rx.drug}</div>
+                    <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{rx.date}</div>
+                  </div>
+                  <div style={{ fontSize: 13, color: C.muted }}>{rx.dosage}</div>
+                  <div style={{ fontSize: 13, color: C.muted }}>{rx.frequency}</div>
+                  <div style={{ fontSize: 13, color: C.muted }}>{rx.duration}</div>
+                  <div style={{ fontSize: 12, color: C.muted }}>{rx.doctor}</div>
+                  <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                    <ActionBtn icon={Printer} title="Print" />
+                    <ActionBtn icon={Pencil}  title="Edit" />
+                    <ActionBtn icon={Trash2}  title="Delete" danger onClick={() => removeItem('prescriptions', rx.id)} />
                   </div>
                 </div>
               ))}
             </div>
-          )
+          </div>
         )}
 
-        {['documents', 'timeline'].includes(tab) && (
-          <div style={{ textAlign: 'center', padding: 64, color: C.muted }}>
-            <div style={{ fontSize: 32, marginBottom: 12, opacity: 0.3 }}>{tab === 'documents' ? '📁' : '⏱'}</div>
-            <div style={{ fontSize: 14 }}>No {tab} records found for this patient.</div>
+        {/* ── LABS ── */}
+        {tab === 'labs' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div style={{ fontSize: 13, color: C.muted }}>Diagnostic lab tests and reports</div>
+              <button className="btn-primary" style={{ fontSize: 13 }}><Plus size={14} /> Add lab result</button>
+            </div>
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1fr 0.8fr 76px', padding: '12px 20px', background: C.subtleBg, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, fontWeight: 600 }}>
+                <div>Test</div><div>Result</div><div>Normal Range</div><div>Doctor</div><div>Status</div><div></div>
+              </div>
+              {patient.labs.length === 0 ? (
+                <div style={{ padding: 32, textAlign: 'center', color: C.muted, fontSize: 14 }}>
+                  No lab results on record. Lab investigations ordered during IPD admission appear in IPD Admissions → Investigations.
+                </div>
+              ) : patient.labs.map((lab) => (
+                <div key={lab.id} style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1fr 0.8fr 76px', padding: '14px 20px', borderTop: `1px solid ${C.border}`, alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: C.text }}>{lab.test}</div>
+                    <div style={{ fontSize: 11, color: C.muted }}>{lab.date}</div>
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: lab.status === 'High' ? '#d9a441' : C.text }}>{lab.result}</div>
+                  <div style={{ fontSize: 12, color: C.muted }}>{lab.normal}</div>
+                  <div style={{ fontSize: 12, color: C.muted }}>{lab.doctor}</div>
+                  <div>
+                    <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 10, background: lab.statusBg, color: lab.statusColor, fontWeight: 500 }}>{lab.status}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                    <ActionBtn icon={Printer} title="Print" />
+                    <ActionBtn icon={Pencil}  title="Edit" />
+                    <ActionBtn icon={Trash2}  title="Delete" danger onClick={() => removeItem('labs', lab.id)} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── VITALS ── */}
+        {tab === 'vitals' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div style={{ fontSize: 13, color: C.muted }}>Recorded vital signs over time</div>
+              <button className="btn-primary" style={{ fontSize: 13 }}><Plus size={14} /> Record vitals</button>
+            </div>
+            {/* BP trend chart */}
+            {patient.vitals.length > 0 && (
+              <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 22, marginBottom: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                  <div>
+                    <div style={{ fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, fontWeight: 600 }}>Blood pressure trend</div>
+                    <div style={{ fontSize: 22, fontWeight: 400, letterSpacing: '-0.01em', color: C.text, marginTop: 2 }}>{patient.vitals[0].bp} <span style={{ fontSize: 12, color: C.muted }}>mmHg</span></div>
+                    <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>Latest reading · {patient.vitals[0].date}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 14, fontSize: 11 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: C.muted }}><span style={{ width: 8, height: 8, background: '#0891b2', borderRadius: '50%', display: 'inline-block' }}></span>Systolic</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: C.muted }}><span style={{ width: 8, height: 8, background: '#2D6A9F', borderRadius: '50%', display: 'inline-block' }}></span>Diastolic</div>
+                  </div>
+                </div>
+                {(() => {
+                  const vs = [...patient.vitals].reverse();
+                  const allSys = vs.map((v) => v.bpSys);
+                  const allDia = vs.map((v) => v.bpDia);
+                  const minV = Math.min(...allSys, ...allDia) - 10;
+                  const maxV = Math.max(...allSys, ...allDia) + 10;
+                  const range = maxV - minV;
+                  const W = 600, H = 160;
+                  const pts = (arr) => arr.map((v, i) => {
+                    const x = vs.length === 1 ? W / 2 : (i / (vs.length - 1)) * W;
+                    const y = H - ((v - minV) / range) * H;
+                    return `${x},${y}`;
+                  }).join(' ');
+                  return (
+                    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 160 }}>
+                      {[0.25, 0.5, 0.75].map((f) => (
+                        <line key={f} x1="0" y1={H * f} x2={W} y2={H * f} stroke="rgba(15,23,42,0.06)" strokeDasharray="4 4" />
+                      ))}
+                      <polyline points={pts(allSys)} fill="none" stroke="#0891b2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      <polyline points={pts(allDia)} fill="none" stroke="#2D6A9F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      {vs.map((v, i) => {
+                        const x = vs.length === 1 ? W / 2 : (i / (vs.length - 1)) * W;
+                        const sy = H - ((v.bpSys - minV) / range) * H;
+                        const dy = H - ((v.bpDia - minV) / range) * H;
+                        return (
+                          <g key={i}>
+                            <circle cx={x} cy={sy} r="4" fill="#0891b2" />
+                            <circle cx={x} cy={dy} r="4" fill="#2D6A9F" />
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  );
+                })()}
+              </div>
+            )}
+            {/* Vitals table */}
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 0.7fr 0.7fr 0.7fr 0.7fr 76px', padding: '12px 20px', background: C.subtleBg, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, fontWeight: 600 }}>
+                <div>Date</div><div>BP (mmHg)</div><div>Pulse</div><div>Temp</div><div>Weight</div><div>SpO₂</div><div></div>
+              </div>
+              {patient.vitals.length === 0 ? (
+                <div style={{ padding: 32, textAlign: 'center', color: C.muted }}>No vitals recorded.</div>
+              ) : patient.vitals.map((v) => (
+                <div key={v.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 0.7fr 0.7fr 0.7fr 0.7fr 76px', padding: '14px 20px', borderTop: `1px solid ${C.border}`, alignItems: 'center' }}>
+                  <div style={{ fontSize: 12, color: C.muted }}>{v.date}</div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: C.text }}>{v.bp}</div>
+                  <div style={{ fontSize: 13, color: C.text }}>{v.pulse} bpm</div>
+                  <div style={{ fontSize: 13, color: C.text }}>{v.temp}°F</div>
+                  <div style={{ fontSize: 13, color: C.text }}>{v.wt} kg</div>
+                  <div style={{ fontSize: 13, color: C.text }}>{v.spo2}%</div>
+                  <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                    <ActionBtn icon={Printer} title="Print" />
+                    <ActionBtn icon={Pencil}  title="Edit" />
+                    <ActionBtn icon={Trash2}  title="Delete" danger onClick={() => removeItem('vitals', v.id)} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── DOCUMENTS ── */}
+        {tab === 'documents' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div style={{ fontSize: 13, color: C.muted }}>Scanned reports, X-rays, consent forms, etc.</div>
+              <button className="btn-primary" style={{ fontSize: 13 }}><Plus size={14} /> Add document</button>
+            </div>
+            {patient.documents.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 48, color: C.muted, background: C.surface, border: `1px dashed ${C.border}`, borderRadius: 12 }}>
+                <Folder size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
+                <div style={{ fontSize: 14, marginTop: 8 }}>No documents attached.</div>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                {patient.documents.map((doc) => (
+                  <div key={doc.id} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 18, display: 'flex', gap: 14 }}>
+                    <div style={{ width: 44, height: 54, background: C.subtleBg, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <FileText size={20} color={C.muted} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: C.text, wordBreak: 'break-word' }}>{doc.name}</div>
+                      <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>{doc.type} · {doc.date}</div>
+                      {doc.notes && <div style={{ fontSize: 12, color: C.muted, marginTop: 4, fontStyle: 'italic' }}>{doc.notes}</div>}
+                      <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+                        <button style={{ background: 'transparent', border: `1px solid ${C.border}`, padding: '5px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4, color: C.text, fontFamily: 'inherit' }}>
+                          <Pencil size={12} /> Edit
+                        </button>
+                        <button onClick={() => removeItem('documents', doc.id)} style={{ background: 'transparent', border: '1px solid rgba(217,80,80,0.30)', color: '#d95050', padding: '5px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}>
+                          <Trash2 size={12} /> Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── TIMELINE ── */}
+        {tab === 'timeline' && (
+          <div>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>Complete Patient Record History</div>
+              <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>All visits, prescriptions, lab results, vitals and admissions — in one chronological view</div>
+            </div>
+            {timeline.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 48, color: C.muted, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12 }}>
+                <Clock size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
+                <div style={{ fontSize: 14, marginTop: 8 }}>No records yet for this patient.</div>
+              </div>
+            ) : (
+              <div style={{ position: 'relative' }}>
+                <div style={{ position: 'absolute', left: 119, top: 0, bottom: 0, width: 2, background: `1px solid ${C.border}`, opacity: 0.3 }} />
+                {timeline.map((ti, i) => {
+                  const Icon = ti.icon;
+                  return (
+                    <div key={i} style={{ display: 'flex', gap: 0, marginBottom: 4, alignItems: 'flex-start' }}>
+                      <div style={{ width: 110, flexShrink: 0, textAlign: 'right', paddingRight: 16, paddingTop: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: C.text }}>{ti.label}</div>
+                      </div>
+                      <div style={{ width: 20, flexShrink: 0, display: 'flex', justifyContent: 'center', paddingTop: 18, position: 'relative', zIndex: 1 }}>
+                        <div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid white', background: ti.color, boxShadow: `0 0 0 2px ${ti.color}44` }} />
+                      </div>
+                      <div style={{ flex: 1, marginLeft: 12, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '14px 16px', marginBottom: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                          <div style={{ width: 32, height: 32, borderRadius: 8, background: ti.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <Icon size={15} color={ti.color} />
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                              <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{ti.title}</span>
+                              <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '2px 7px', borderRadius: 8, background: ti.bg, color: ti.color }}>{ti.type}</span>
+                            </div>
+                            <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>{ti.detail}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── BILLING ── */}
+        {tab === 'billing' && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>Bills for this patient</div>
+              <div style={{ display: 'flex', gap: 16, fontSize: 13 }}>
+                <div style={{ color: C.muted }}>Total billed: <strong style={{ color: C.primary }}>{fmt(patient.billings.reduce((s, b) => s + b.amount, 0))}</strong></div>
+                <div style={{ color: C.muted }}>Outstanding: <strong style={{ color: '#991b1b' }}>{fmt(patient.billings.reduce((s, b) => s + (b.amount - b.paid), 0))}</strong></div>
+              </div>
+            </div>
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 80px 100px 100px 90px 100px', padding: '10px 20px', background: C.subtleBg, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, fontWeight: 600 }}>
+                <div>Bill No.</div><div>Type</div><div>Total</div><div>Paid</div><div>Status</div><div style={{ textAlign: 'right' }}>Action</div>
+              </div>
+              {patient.billings.length === 0 ? (
+                <div style={{ padding: 32, textAlign: 'center', color: C.muted }}>No bills on record.</div>
+              ) : patient.billings.map((b) => {
+                const isPaid = b.status === 'paid';
+                const isPartial = b.status === 'partial';
+                const statusColor = isPaid ? '#15803d' : isPartial ? '#d9a441' : '#d95050';
+                const statusBg = isPaid ? 'rgba(78,179,116,0.10)' : isPartial ? 'rgba(217,164,65,0.10)' : 'rgba(217,80,80,0.10)';
+                const statusLabel = isPaid ? 'Paid' : isPartial ? 'Partial' : 'Pending';
+                return (
+                  <div key={b.id} style={{ display: 'grid', gridTemplateColumns: '140px 80px 100px 100px 90px 100px', padding: '12px 20px', borderTop: `1px solid ${C.border}`, alignItems: 'center', fontSize: 13 }}>
+                    <div style={{ fontWeight: 600, color: C.primary, fontSize: 12 }}>{b.id}</div>
+                    <div><span style={{ background: C.subtleBg, color: C.muted, padding: '2px 8px', borderRadius: 8, fontSize: 11 }}>{b.type}</span></div>
+                    <div style={{ fontWeight: 600 }}>{fmt(b.amount)}</div>
+                    <div style={{ color: '#15803d', fontWeight: 500 }}>{fmt(b.paid)}</div>
+                    <div><span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 10, background: statusBg, color: statusColor, fontWeight: 500 }}>{statusLabel}</span></div>
+                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                      <ActionBtn icon={Pencil} title="Edit" />
+                      <button style={{ background: C.primary, color: 'white', border: 'none', padding: '5px 10px', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Eye size={11} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── IPD ADMISSIONS ── */}
+        {tab === 'admissions' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>IPD Admission History</div>
+                <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>All in-patient admissions for {patient.name}</div>
+              </div>
+              <button className="btn-primary" style={{ fontSize: 13 }}><Plus size={14} /> Admit patient</button>
+            </div>
+            {patient.admissions.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 64, color: C.muted, background: C.surface, border: `1px dashed ${C.border}`, borderRadius: 12 }}>
+                <BedDouble size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
+                <div style={{ fontSize: 14, marginTop: 8 }}>No IPD admissions recorded for this patient.</div>
+                <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Click "Admit patient" to create the first admission.</div>
+              </div>
+            ) : (
+              <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '130px 130px 1fr 110px 80px 130px 110px', padding: '11px 18px', background: C.subtleBg, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, fontWeight: 600 }}>
+                  <div>IP No.</div><div>Admitted</div><div>Doctor</div><div>Ward / Bed</div><div>Days</div><div>Discharged</div><div>Status</div>
+                </div>
+                {patient.admissions.map((a) => {
+                  const days  = daysBetween(a.admittedOn, a.dischargedOn);
+                  const isAdm = a.status === 'admitted';
+                  return (
+                    <div
+                      key={a.id}
+                      onClick={() => navigate(`/admissions/${a.id}`)}
+                      style={{ display: 'grid', gridTemplateColumns: '130px 130px 1fr 110px 80px 130px 110px', padding: '13px 18px', borderTop: `1px solid ${C.border}`, alignItems: 'center', fontSize: 13, cursor: 'pointer', transition: 'background 120ms' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = C.subtleBg)}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <div style={{ fontWeight: 600, color: C.primary, fontSize: 12 }}>{a.ipNo}</div>
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 500 }}>{fmtDate(a.admittedOn)}</div>
+                        <div style={{ fontSize: 10, color: C.muted }}>{a.admittedTime}</div>
+                      </div>
+                      <div style={{ fontSize: 12, color: C.text }}>{a.admittingDoctor}</div>
+                      <div style={{ fontSize: 12 }}>{a.ward} · {a.bedNo}</div>
+                      <div style={{ fontSize: 12 }}>{days}d</div>
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 500 }}>{fmtDate(a.dischargedOn)}</div>
+                        {a.dischargedTime && <div style={{ fontSize: 10, color: C.muted }}>{a.dischargedTime}</div>}
+                      </div>
+                      <div>
+                        <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 10, fontWeight: 500, background: isAdm ? 'rgba(8,145,178,0.10)' : 'rgba(78,179,116,0.10)', color: isAdm ? '#0891b2' : '#15803d' }}>
+                          {isAdm ? 'Admitted' : 'Discharged'}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Edit modal — ef is always non-null so React Compiler can never hoist a null deref */}
+      {/* Edit modal */}
       {isEditOpen && createPortal(
         <div className="modal-backdrop" onClick={closeEdit} style={{ alignItems: 'flex-start', paddingTop: 32 }}>
-          <div
-            className="modal-panel"
-            style={{ maxWidth: 620, maxHeight: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border-card)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 1 }}>
+          <div className="modal-panel" style={{ maxWidth: 620, maxHeight: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border-card)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--fg-on-light)' }}>Edit Patient</div>
-                <div style={{ fontSize: 12, color: 'var(--fg-on-light-muted)', marginTop: 2 }}>{patient.name}</div>
+                <div style={{ fontWeight: 700, fontSize: 15 }}>Edit Patient</div>
+                <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{patient.name}</div>
               </div>
-              <button onClick={closeEdit} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--fg-on-light-muted)', padding: 4 }}>
-                <X size={18} />
-              </button>
+              <button onClick={closeEdit} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}><X size={18} color={C.muted} /></button>
             </div>
-
             <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12 }}>
-                <label>
-                  <span style={lbl}>Full Name *</span>
-                  <input style={inp} value={ef.name} onChange={(e) => setField('name', e.target.value)} placeholder="Patient full name" />
-                </label>
-                <label>
-                  <span style={lbl}>Age</span>
-                  <input style={inp} type="number" value={ef.age} onChange={(e) => setField('age', e.target.value)} />
-                </label>
-                <label>
-                  <span style={lbl}>Sex</span>
+                <label><span style={lbl}>Full Name *</span><input style={inp} value={ef.name} onChange={(e) => setField('name', e.target.value)} /></label>
+                <label><span style={lbl}>Age</span><input style={inp} type="number" value={ef.age} onChange={(e) => setField('age', e.target.value)} /></label>
+                <label><span style={lbl}>Sex</span>
                   <select style={inp} value={ef.sex} onChange={(e) => setField('sex', e.target.value)}>
                     <option>Male</option><option>Female</option><option>Other</option>
                   </select>
                 </label>
               </div>
-
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                <label>
-                  <span style={lbl}>Phone</span>
-                  <input style={inp} value={ef.phone} onChange={(e) => setField('phone', e.target.value)} />
-                </label>
-                <label>
-                  <span style={lbl}>Email</span>
-                  <input style={inp} type="email" value={ef.email} onChange={(e) => setField('email', e.target.value)} />
-                </label>
-                <label>
-                  <span style={lbl}>Blood Group</span>
+                <label><span style={lbl}>Phone</span><input style={inp} value={ef.phone} onChange={(e) => setField('phone', e.target.value)} /></label>
+                <label><span style={lbl}>Email</span><input style={inp} type="email" value={ef.email} onChange={(e) => setField('email', e.target.value)} /></label>
+                <label><span style={lbl}>Blood Group</span>
                   <select style={inp} value={ef.blood} onChange={(e) => setField('blood', e.target.value)}>
-                    {['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'].map((b) => <option key={b}>{b}</option>)}
+                    {['A+','A-','B+','B-','O+','O-','AB+','AB-'].map((b) => <option key={b}>{b}</option>)}
                   </select>
                 </label>
               </div>
-
-              <label>
-                <span style={lbl}>Address</span>
-                <input style={inp} value={ef.address} onChange={(e) => setField('address', e.target.value)} />
-              </label>
-
-              <label>
-                <span style={lbl}>Allergies (comma separated)</span>
-                <input style={inp} placeholder="e.g. Penicillin, Latex" value={ef.allergies} onChange={(e) => setField('allergies', e.target.value)} />
-              </label>
-
-              <label>
-                <span style={lbl}>Tags (comma separated)</span>
-                <input style={inp} placeholder="e.g. Chronic, Diabetes" value={ef.tags} onChange={(e) => setField('tags', e.target.value)} />
-              </label>
-
+              <label><span style={lbl}>Address</span><input style={inp} value={ef.address} onChange={(e) => setField('address', e.target.value)} /></label>
+              <label><span style={lbl}>Allergies (comma separated)</span><input style={inp} placeholder="e.g. Penicillin, Latex" value={ef.allergies} onChange={(e) => setField('allergies', e.target.value)} /></label>
+              <label><span style={lbl}>Tags (comma separated)</span><input style={inp} placeholder="e.g. Chronic, Diabetes" value={ef.tags} onChange={(e) => setField('tags', e.target.value)} /></label>
               <div>
                 <div style={lbl}>Emergency Contact</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
@@ -619,20 +869,11 @@ export default function PatientDetail() {
                   <input style={inp} placeholder="Phone" value={ef.emergencyPhone} onChange={(e) => setField('emergencyPhone', e.target.value)} />
                 </div>
               </div>
-
-              <label>
-                <span style={lbl}>Insurance</span>
-                <input style={inp} placeholder="Provider · Policy #" value={ef.insurance} onChange={(e) => setField('insurance', e.target.value)} />
-              </label>
+              <label><span style={lbl}>Insurance</span><input style={inp} placeholder="Provider · Policy #" value={ef.insurance} onChange={(e) => setField('insurance', e.target.value)} /></label>
             </div>
-
-            <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border-card)', display: 'flex', justifyContent: 'flex-end', gap: 10, background: 'var(--surface-subtle)' }}>
-              <button onClick={closeEdit} style={{ background: 'transparent', color: 'var(--fg-on-light)', border: '1px solid var(--border-strong)', padding: '9px 16px', borderRadius: 8, fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
-                Cancel
-              </button>
-              <button onClick={saveEdit} className="btn-primary">
-                <Check size={15} /> Save Changes
-              </button>
+            <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border-card)', display: 'flex', justifyContent: 'flex-end', gap: 10, background: C.subtleBg, flexShrink: 0 }}>
+              <button onClick={closeEdit} style={{ background: 'transparent', color: C.text, border: '1px solid var(--border-strong)', padding: '9px 16px', borderRadius: 8, fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={saveEdit} className="btn-primary"><Check size={15} /> Save Changes</button>
             </div>
           </div>
         </div>,
