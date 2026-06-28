@@ -172,7 +172,7 @@ export default function Sidebar() {
             icon={BedDouble}
             label="IPD Admissions"
             sub="In-patient care &amp; case files"
-            badge={14}
+            badge={5}
           />
 
           <SectionLabel>Team</SectionLabel>
