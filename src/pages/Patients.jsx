@@ -1,180 +1,260 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useOutletContext } from 'react-router-dom';
-import { Plus, AlertTriangle, X } from 'lucide-react';
+import { Plus, AlertTriangle, X, Pencil, Archive, Check } from 'lucide-react';
 import CustomSelect from '../components/ui/CustomSelect';
 
-const ALL_PATIENTS = [
+const INIT_PATIENTS = [
   {
-    id: 'PT-0128',
-    name: 'Kiran Desai',
-    initials: 'KD',
-    phone: '98765 43210',
-    blood: 'B+',
-    ageSex: '34M',
+    id: 'PT-0128', name: 'Kiran Desai', initials: 'KD',
+    dob: '1992-03-14', age: '34', sex: 'Male', blood: 'B+',
+    phone: '98765 43210', email: 'kiran.desai@email.com',
+    address: '12 MG Road, Bengaluru, Karnataka 560001',
+    allergies: '',
     tags: ['Diabetes', 'Hypertension'],
-    status: 'active',
-    hasAllergy: false,
-    reg: '10 Jun 2026',
+    emergencyName: 'Priya Desai', emergencyRelation: 'Spouse', emergencyPhone: '98765 00001',
+    insurance: 'Star Health · POL-001234',
+    status: 'active', hasAllergy: false, reg: '10 Jun 2026',
   },
   {
-    id: 'PT-0127',
-    name: 'Meena Agarwal',
-    initials: 'MA',
-    phone: '87654 32109',
-    blood: 'O+',
-    ageSex: '52F',
+    id: 'PT-0127', name: 'Meena Agarwal', initials: 'MA',
+    dob: '1974-07-22', age: '52', sex: 'Female', blood: 'O+',
+    phone: '87654 32109', email: 'meena.agarwal@email.com',
+    address: '45 Civil Lines, Allahabad, UP 211001',
+    allergies: 'Penicillin, Aspirin',
     tags: ['Hypertension'],
-    status: 'active',
-    hasAllergy: true,
-    reg: '08 Jun 2026',
+    emergencyName: 'Ramesh Agarwal', emergencyRelation: 'Husband', emergencyPhone: '87654 00002',
+    insurance: 'Max Bupa · POL-002345',
+    status: 'admitted', hasAllergy: true, reg: '08 Jun 2026',
   },
   {
-    id: 'PT-0126',
-    name: 'Suresh Rao',
-    initials: 'SR',
-    phone: '76543 21098',
-    blood: 'A+',
-    ageSex: '67M',
+    id: 'PT-0126', name: 'Suresh Rao', initials: 'SR',
+    dob: '1958-11-05', age: '67', sex: 'Male', blood: 'A+',
+    phone: '76543 21098', email: 'suresh.rao@email.com',
+    address: '78 Anna Salai, Chennai, TN 600002',
+    allergies: '',
     tags: ['Cardiac', 'Diabetes'],
-    status: 'active',
-    hasAllergy: false,
-    reg: '05 Jun 2026',
+    emergencyName: 'Kavitha Rao', emergencyRelation: 'Daughter', emergencyPhone: '76543 00003',
+    insurance: 'HDFC Ergo · POL-003456',
+    status: 'discharged', hasAllergy: false, reg: '05 Jun 2026',
   },
   {
-    id: 'PT-0125',
-    name: 'Anjali Shah',
-    initials: 'AS',
-    phone: '65432 10987',
-    blood: 'AB-',
-    ageSex: '28F',
+    id: 'PT-0125', name: 'Anjali Shah', initials: 'AS',
+    dob: '1998-01-30', age: '28', sex: 'Female', blood: 'AB-',
+    phone: '65432 10987', email: 'anjali.shah@email.com',
+    address: '9 Satellite Road, Ahmedabad, GJ 380015',
+    allergies: 'Latex',
     tags: [],
-    status: 'active',
-    hasAllergy: true,
-    reg: '02 Jun 2026',
+    emergencyName: 'Nikhil Shah', emergencyRelation: 'Brother', emergencyPhone: '65432 00004',
+    insurance: '',
+    status: 'admitted', hasAllergy: true, reg: '02 Jun 2026',
   },
   {
-    id: 'PT-0124',
-    name: 'Mohan Trivedi',
-    initials: 'MT',
-    phone: '54321 09876',
-    blood: 'O-',
-    ageSex: '45M',
+    id: 'PT-0124', name: 'Mohan Trivedi', initials: 'MT',
+    dob: '1981-06-18', age: '45', sex: 'Male', blood: 'O-',
+    phone: '54321 09876', email: 'mohan.trivedi@email.com',
+    address: '33 Residency Road, Indore, MP 452001',
+    allergies: '',
     tags: ['Asthma'],
-    status: 'active',
-    hasAllergy: false,
-    reg: '30 May 2026',
+    emergencyName: 'Sunita Trivedi', emergencyRelation: 'Wife', emergencyPhone: '54321 00005',
+    insurance: 'Oriental Insurance · POL-004567',
+    status: 'active', hasAllergy: false, reg: '30 May 2026',
   },
   {
-    id: 'PT-0123',
-    name: 'Lakshmi Nair',
-    initials: 'LN',
-    phone: '43210 98765',
-    blood: 'A-',
-    ageSex: '38F',
+    id: 'PT-0123', name: 'Lakshmi Nair', initials: 'LN',
+    dob: '1988-09-10', age: '38', sex: 'Female', blood: 'A-',
+    phone: '43210 98765', email: 'lakshmi.nair@email.com',
+    address: '22 Pattom, Thiruvananthapuram, KL 695004',
+    allergies: '',
     tags: ['Thyroid'],
-    status: 'active',
-    hasAllergy: false,
-    reg: '28 May 2026',
+    emergencyName: 'Arun Nair', emergencyRelation: 'Husband', emergencyPhone: '43210 00006',
+    insurance: 'LIC Health · POL-005678',
+    status: 'active', hasAllergy: false, reg: '28 May 2026',
   },
   {
-    id: 'PT-0122',
-    name: 'Deepak Verma',
-    initials: 'DV',
-    phone: '32109 87654',
-    blood: 'B-',
-    ageSex: '55M',
+    id: 'PT-0122', name: 'Deepak Verma', initials: 'DV',
+    dob: '1969-12-25', age: '55', sex: 'Male', blood: 'B-',
+    phone: '32109 87654', email: 'deepak.verma@email.com',
+    address: '5 Civil Lines, Lucknow, UP 226001',
+    allergies: '',
     tags: ['Cardiac'],
-    status: 'archived',
-    hasAllergy: false,
-    reg: '15 May 2026',
+    emergencyName: 'Seema Verma', emergencyRelation: 'Wife', emergencyPhone: '32109 00007',
+    insurance: 'United India · POL-006789',
+    status: 'archived', hasAllergy: false, reg: '15 May 2026',
   },
   {
-    id: 'PT-0121',
-    name: 'Sonal Mehta',
-    initials: 'SM',
-    phone: '21098 76543',
-    blood: 'AB+',
-    ageSex: '41F',
+    id: 'PT-0121', name: 'Sonal Mehta', initials: 'SM',
+    dob: '1983-04-02', age: '41', sex: 'Female', blood: 'AB+',
+    phone: '21098 76543', email: 'sonal.mehta@email.com',
+    address: '16 Koregaon Park, Pune, MH 411001',
+    allergies: 'Sulfa drugs',
     tags: ['Diabetes'],
-    status: 'archived',
-    hasAllergy: true,
-    reg: '10 May 2026',
+    emergencyName: 'Rajesh Mehta', emergencyRelation: 'Husband', emergencyPhone: '21098 00008',
+    insurance: 'Care Health · POL-007890',
+    status: 'archived', hasAllergy: true, reg: '10 May 2026',
   },
 ];
 
 const STATUS_BADGE = {
-  active: { label: 'Active', color: '#15803d', bg: 'rgba(78,179,116,0.12)' },
-  archived: { label: 'Archived', color: 'var(--fg-on-light-muted)', bg: 'var(--surface-subtle)' },
+  active:     { label: 'Active',     color: '#15803d', bg: 'rgba(78,179,116,0.12)' },
+  admitted:   { label: 'Admitted',   color: '#0891b2', bg: 'rgba(8,145,178,0.12)' },
+  discharged: { label: 'Discharged', color: '#995f2f', bg: 'rgba(153,95,47,0.12)' },
+  archived:   { label: 'Archived',   color: 'var(--fg-on-light-muted)', bg: 'var(--surface-subtle)' },
+};
+
+const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
+
+const EMPTY_EDIT = {
+  name: '', dob: '', age: '', sex: 'Male', blood: 'O+',
+  phone: '', email: '', address: '',
+  allergies: '', tags: '',
+  emergencyName: '', emergencyRelation: '', emergencyPhone: '',
+  insurance: '', status: 'active',
+};
+
+const inp = {
+  width: '100%', padding: '10px 12px',
+  border: '1px solid var(--border-strong)',
+  borderRadius: 8, fontFamily: 'inherit', fontSize: 14, outline: 'none',
+  background: 'var(--bg-canvas)', color: 'var(--fg-on-light)', boxSizing: 'border-box',
+};
+
+const lbl = {
+  display: 'block', fontSize: 11, fontWeight: 600,
+  textTransform: 'uppercase', letterSpacing: '0.06em',
+  color: 'var(--fg-on-light-muted)', marginBottom: 5,
+};
+
+const calculateAge = (dob) => {
+  if (!dob) return '';
+  const birth = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return String(age);
 };
 
 export default function Patients() {
   const navigate = useNavigate();
   const { openRegisterModal } = useOutletContext();
 
+  const [patients, setPatients] = useState(INIT_PATIENTS);
   const [statusFilter, setStatusFilter] = useState('all');
-  const [bloodFilter, setBloodFilter] = useState('all');
-  const [tagFilter, setTagFilter] = useState('all');
+  const [bloodFilter, setBloodFilter]   = useState('all');
+  const [tagFilter, setTagFilter]       = useState('all');
 
-  const allTags = [...new Set(ALL_PATIENTS.flatMap((p) => p.tags))].sort();
+  const [editOpen, setEditOpen] = useState(false);
+  const [editId,   setEditId]   = useState(null);
+  const [editForm, setEditForm] = useState(null);
 
-  const filtered = ALL_PATIENTS.filter((p) => {
+  // React Compiler safe — ef is always a non-null object
+  const ef         = editForm !== null ? editForm : EMPTY_EDIT;
+  const isEditOpen = editOpen;
+
+  const allTags = [...new Set(patients.flatMap((p) => p.tags))].sort();
+
+  const filtered = patients.filter((p) => {
     if (statusFilter !== 'all' && p.status !== statusFilter) return false;
-    if (bloodFilter !== 'all' && p.blood !== bloodFilter) return false;
-    if (tagFilter !== 'all' && !p.tags.includes(tagFilter)) return false;
+    if (bloodFilter  !== 'all' && p.blood  !== bloodFilter)  return false;
+    if (tagFilter    !== 'all' && !p.tags.includes(tagFilter)) return false;
     return true;
   });
 
   const hasFilters = statusFilter !== 'all' || bloodFilter !== 'all' || tagFilter !== 'all';
-  const clearFilters = () => {
-    setStatusFilter('all');
-    setBloodFilter('all');
-    setTagFilter('all');
+  const clearFilters = () => { setStatusFilter('all'); setBloodFilter('all'); setTagFilter('all'); };
+
+  const archivePatient = (id) => {
+    setPatients((ps) =>
+      ps.map((p) => p.id === id ? { ...p, status: p.status === 'archived' ? 'active' : 'archived' } : p)
+    );
+  };
+
+  const openEdit = (p) => {
+    setEditId(p.id);
+    setEditForm({
+      name:              p.name,
+      dob:               p.dob,
+      age:               p.age,
+      sex:               p.sex,
+      blood:             p.blood,
+      phone:             p.phone,
+      email:             p.email,
+      address:           p.address,
+      allergies:         p.allergies,
+      tags:              p.tags.join(', '),
+      emergencyName:     p.emergencyName,
+      emergencyRelation: p.emergencyRelation,
+      emergencyPhone:    p.emergencyPhone,
+      insurance:         p.insurance,
+      status:            p.status,
+    });
+    setEditOpen(true);
+  };
+
+  const closeEdit = () => {
+    setEditOpen(false);
+    setEditId(null);
+    setEditForm(null);
+  };
+
+  const setField = (k, v) => setEditForm((f) => ({ ...f, [k]: v }));
+
+  const saveEdit = () => {
+    setPatients((ps) =>
+      ps.map((p) => {
+        if (p.id !== editId) return p;
+        const newName    = ef.name.trim() || p.name;
+        const initials   = newName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+        const tagsArr    = ef.tags.split(',').map((s) => s.trim()).filter(Boolean);
+        const allergyArr = ef.allergies.split(',').map((s) => s.trim()).filter(Boolean);
+        return {
+          ...p,
+          name:              newName,
+          initials,
+          dob:               ef.dob,
+          age:               ef.age,
+          sex:               ef.sex,
+          blood:             ef.blood,
+          phone:             ef.phone,
+          email:             ef.email,
+          address:           ef.address,
+          allergies:         ef.allergies,
+          hasAllergy:        allergyArr.length > 0,
+          tags:              tagsArr,
+          emergencyName:     ef.emergencyName,
+          emergencyRelation: ef.emergencyRelation,
+          emergencyPhone:    ef.emergencyPhone,
+          insurance:         ef.insurance,
+          status:            ef.status,
+        };
+      })
+    );
+    closeEdit();
   };
 
   const selectStyle = {
-    padding: '9px 14px',
-    border: '1px solid var(--border-ui)',
-    borderRadius: 8,
-    fontFamily: 'inherit',
-    fontSize: 13,
-    background: 'var(--surface)',
-    color: 'var(--fg-on-light)',
-    cursor: 'pointer',
-    outline: 'none',
+    padding: '9px 14px', border: '1px solid var(--border-ui)', borderRadius: 8,
+    fontFamily: 'inherit', fontSize: 13, background: 'var(--surface)',
+    color: 'var(--fg-on-light)', cursor: 'pointer', outline: 'none',
+  };
+
+  const iconBtn = {
+    background: 'transparent', border: '1px solid var(--border-ui)',
+    width: 30, height: 30, borderRadius: 6,
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer', color: 'var(--fg-on-light)', flexShrink: 0,
   };
 
   return (
     <div style={{ animation: 'mv-fade 200ms ease both' }}>
       {/* Header */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'flex-end',
-          justifyContent: 'space-between',
-          marginBottom: 14,
-        }}
-      >
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 14 }}>
         <div>
-          <div
-            style={{
-              fontSize: 11,
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              color: 'var(--fg-on-light-muted)',
-              fontWeight: 600,
-            }}
-          >
-            {filtered.length} of {ALL_PATIENTS.length} records
+          <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-on-light-muted)', fontWeight: 600 }}>
+            {filtered.length} of {patients.length} records
           </div>
-          <h1
-            style={{
-              fontSize: 34,
-              fontWeight: 300,
-              letterSpacing: '-0.02em',
-              margin: '8px 0 0',
-              color: 'var(--fg-on-light)',
-            }}
-          >
+          <h1 style={{ fontSize: 34, fontWeight: 300, letterSpacing: '-0.02em', margin: '8px 0 0', color: 'var(--fg-on-light)' }}>
             Patients
           </h1>
         </div>
@@ -184,93 +264,32 @@ export default function Patients() {
       </div>
 
       {/* Filters */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          marginBottom: 18,
-          flexWrap: 'wrap',
-        }}
-      >
-        <CustomSelect
-          style={selectStyle}
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+        <CustomSelect style={selectStyle} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="all">All status</option>
-          <option value="active">Active only</option>
+          <option value="active">Active</option>
+          <option value="admitted">Admitted</option>
+          <option value="discharged">Discharged</option>
           <option value="archived">Archived</option>
         </CustomSelect>
-        <CustomSelect
-          style={selectStyle}
-          value={bloodFilter}
-          onChange={(e) => setBloodFilter(e.target.value)}
-        >
+        <CustomSelect style={selectStyle} value={bloodFilter} onChange={(e) => setBloodFilter(e.target.value)}>
           <option value="all">All blood groups</option>
-          {['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'].map((b) => (
-            <option key={b} value={b}>
-              {b}
-            </option>
-          ))}
+          {BLOOD_GROUPS.map((b) => <option key={b} value={b}>{b}</option>)}
         </CustomSelect>
-        <CustomSelect
-          style={selectStyle}
-          value={tagFilter}
-          onChange={(e) => setTagFilter(e.target.value)}
-        >
+        <CustomSelect style={selectStyle} value={tagFilter} onChange={(e) => setTagFilter(e.target.value)}>
           <option value="all">All tags</option>
-          {allTags.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
+          {allTags.map((t) => <option key={t} value={t}>{t}</option>)}
         </CustomSelect>
         {hasFilters && (
-          <button
-            onClick={clearFilters}
-            style={{
-              background: 'transparent',
-              border: '1px solid var(--border-ui)',
-              color: 'var(--fg-on-light-muted)',
-              padding: '9px 14px',
-              borderRadius: 8,
-              fontFamily: 'inherit',
-              fontSize: 13,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
+          <button onClick={clearFilters} style={{ background: 'transparent', border: '1px solid var(--border-ui)', color: 'var(--fg-on-light-muted)', padding: '9px 14px', borderRadius: 8, fontFamily: 'inherit', fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <X size={13} /> Clear filters
           </button>
         )}
       </div>
 
       {/* Table */}
-      <div
-        style={{
-          background: 'var(--surface)',
-          border: '1px solid var(--border-card)',
-          borderRadius: 12,
-          overflow: 'hidden',
-        }}
-      >
-        {/* Header row */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1.6fr 1fr 1fr 1.2fr 0.8fr 100px',
-            padding: '12px 20px',
-            background: 'var(--surface-subtle)',
-            fontSize: 11,
-            letterSpacing: '0.06em',
-            textTransform: 'uppercase',
-            color: 'var(--fg-on-light-muted)',
-            fontWeight: 600,
-          }}
-        >
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border-card)', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1.2fr 0.8fr 76px', padding: '12px 20px', background: 'var(--surface-subtle)', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--fg-on-light-muted)', fontWeight: 600 }}>
           <div>Patient</div>
           <div>Phone</div>
           <div>Blood / Age</div>
@@ -280,127 +299,63 @@ export default function Patients() {
         </div>
 
         {filtered.length === 0 ? (
-          <div
-            style={{
-              padding: '48px',
-              textAlign: 'center',
-              color: 'var(--fg-on-light-muted)',
-              fontSize: 14,
-            }}
-          >
+          <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--fg-on-light-muted)', fontSize: 14 }}>
             No patients match the selected filters.
           </div>
         ) : (
           filtered.map((p) => {
-            const badge = STATUS_BADGE[p.status];
+            const badge  = STATUS_BADGE[p.status] ?? STATUS_BADGE.active;
+            const ageSex = p.age ? `${p.age} yrs / ${p.sex === 'Male' ? 'M' : p.sex === 'Female' ? 'F' : p.sex}` : '—';
             return (
               <div
                 key={p.id}
                 onClick={() => navigate(`/patients/${p.id}`)}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1.6fr 1fr 1fr 1.2fr 0.8fr 100px',
-                  padding: '14px 20px',
-                  borderTop: '1px solid var(--border-card)',
-                  alignItems: 'center',
-                  cursor: 'pointer',
-                  transition: 'background 120ms',
-                }}
+                style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1.2fr 0.8fr 76px', padding: '14px 20px', borderTop: '1px solid var(--border-card)', alignItems: 'center', cursor: 'pointer', transition: 'background 120ms' }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-subtle)')}
                 onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div
-                    style={{
-                      width: 36,
-                      height: 36,
-                      background: 'var(--surface-subtle)',
-                      color: 'var(--fg-on-light)',
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      flexShrink: 0,
-                    }}
-                  >
+                  <div style={{ width: 36, height: 36, background: 'var(--surface-subtle)', color: 'var(--fg-on-light)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
                     {p.initials}
                   </div>
                   <div>
-                    <div
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 500,
-                        color: 'var(--fg-on-light)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6,
-                      }}
-                    >
+                    <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--fg-on-light)', display: 'flex', alignItems: 'center', gap: 6 }}>
                       {p.name}
                       {p.hasAllergy && <AlertTriangle size={13} color="#d95050" />}
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--fg-on-light-muted)' }}>
-                      {p.id} · Reg {p.reg}
-                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--fg-on-light-muted)' }}>{p.id} · Reg {p.reg}</div>
                   </div>
                 </div>
 
                 <div style={{ fontSize: 13, color: 'var(--fg-on-light)' }}>{p.phone}</div>
-                <div style={{ fontSize: 13, color: 'var(--fg-on-light)' }}>
-                  {p.blood} · {p.ageSex}
-                </div>
+                <div style={{ fontSize: 13, color: 'var(--fg-on-light)' }}>{p.blood} · {ageSex}</div>
 
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                   {p.tags.map((t) => (
-                    <span
-                      key={t}
-                      style={{
-                        fontSize: 11,
-                        padding: '3px 8px',
-                        background: 'var(--surface-subtle)',
-                        color: 'var(--fg-on-light)',
-                        borderRadius: 10,
-                      }}
-                    >
-                      {t}
-                    </span>
+                    <span key={t} style={{ fontSize: 11, padding: '3px 8px', background: 'var(--surface-subtle)', color: 'var(--fg-on-light)', borderRadius: 10 }}>{t}</span>
                   ))}
                 </div>
 
                 <div>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      padding: '3px 10px',
-                      borderRadius: 10,
-                      background: badge.bg,
-                      color: badge.color,
-                      fontWeight: 500,
-                    }}
-                  >
+                  <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 10, background: badge.bg, color: badge.color, fontWeight: 500 }}>
                     {badge.label}
                   </span>
                 </div>
 
-                <div style={{ textAlign: 'right' }}>
+                <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/patients/${p.id}`);
-                    }}
-                    style={{
-                      background: 'transparent',
-                      border: '1px solid var(--border-ui)',
-                      borderRadius: 6,
-                      padding: '5px 10px',
-                      fontSize: 12,
-                      color: 'var(--fg-on-light-muted)',
-                      cursor: 'pointer',
-                    }}
+                    title="Edit patient"
+                    onClick={(e) => { e.stopPropagation(); openEdit(p); }}
+                    style={iconBtn}
                   >
-                    View
+                    <Pencil size={14} />
+                  </button>
+                  <button
+                    title={p.status === 'archived' ? 'Unarchive' : 'Archive'}
+                    onClick={(e) => { e.stopPropagation(); archivePatient(p.id); }}
+                    style={{ ...iconBtn, color: p.status === 'archived' ? '#d9a441' : 'var(--fg-on-light)' }}
+                  >
+                    <Archive size={14} />
                   </button>
                 </div>
               </div>
@@ -408,6 +363,131 @@ export default function Patients() {
           })
         )}
       </div>
+
+      {/* ─── Edit patient modal ─── */}
+      {isEditOpen && createPortal(
+        <div className="modal-backdrop" onClick={closeEdit} style={{ alignItems: 'flex-start', paddingTop: 40 }}>
+          <div
+            className="modal-panel"
+            style={{ maxWidth: 680, width: '100%', background: 'var(--surface)', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 24px', borderBottom: '1px solid var(--border-card)', flexShrink: 0 }}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <div style={{ width: 34, height: 34, borderRadius: 8, background: 'var(--surface-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: 'var(--fg-on-light)' }}>
+                  {ef.name.trim().split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '—'}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--fg-on-light)' }}>Edit Patient</div>
+                  <div style={{ fontSize: 12, color: 'var(--fg-on-light-muted)', marginTop: 1 }}>{editId}</div>
+                </div>
+              </div>
+              <button onClick={closeEdit} style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border-ui)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fg-on-light)' }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Scrollable body */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+              <label>
+                <span style={lbl}>Full Name *</span>
+                <input style={inp} value={ef.name} onChange={(e) => setField('name', e.target.value)} placeholder="Patient full name" />
+              </label>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12 }}>
+                <label>
+                  <span style={lbl}>Date of Birth</span>
+                  <input type="date" style={inp} value={ef.dob} onChange={(e) => {
+                    const dob = e.target.value;
+                    setEditForm((f) => ({ ...f, dob, age: calculateAge(dob) }));
+                  }} />
+                </label>
+                <label>
+                  <span style={lbl}>Age</span>
+                  <input style={{ ...inp, background: 'var(--surface-subtle)', color: 'var(--fg-on-light-muted)' }} value={ef.age} readOnly />
+                </label>
+                <label>
+                  <span style={lbl}>Sex</span>
+                  <CustomSelect style={inp} value={ef.sex} onChange={(e) => setField('sex', e.target.value)}>
+                    <option>Male</option>
+                    <option>Female</option>
+                    <option>Other</option>
+                  </CustomSelect>
+                </label>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                <label>
+                  <span style={lbl}>Phone</span>
+                  <input style={inp} value={ef.phone} onChange={(e) => setField('phone', e.target.value)} placeholder="+91 ..." />
+                </label>
+                <label>
+                  <span style={lbl}>Email</span>
+                  <input type="email" style={inp} value={ef.email} onChange={(e) => setField('email', e.target.value)} placeholder="patient@email.com" />
+                </label>
+                <label>
+                  <span style={lbl}>Blood Group</span>
+                  <CustomSelect style={inp} value={ef.blood} onChange={(e) => setField('blood', e.target.value)}>
+                    {BLOOD_GROUPS.map((b) => <option key={b}>{b}</option>)}
+                  </CustomSelect>
+                </label>
+              </div>
+
+              <label>
+                <span style={lbl}>Address</span>
+                <input style={inp} value={ef.address} onChange={(e) => setField('address', e.target.value)} placeholder="Full residential address" />
+              </label>
+
+              <label>
+                <span style={lbl}>Status</span>
+                <CustomSelect style={inp} value={ef.status} onChange={(e) => setField('status', e.target.value)}>
+                  <option value="active">Active</option>
+                  <option value="admitted">Admitted</option>
+                  <option value="discharged">Discharged</option>
+                  <option value="archived">Archived</option>
+                </CustomSelect>
+              </label>
+
+              <label>
+                <span style={lbl}>Allergies (comma separated)</span>
+                <input style={inp} value={ef.allergies} onChange={(e) => setField('allergies', e.target.value)} placeholder="e.g. Penicillin, Latex" />
+              </label>
+
+              <label>
+                <span style={lbl}>Tags (comma separated)</span>
+                <input style={inp} value={ef.tags} onChange={(e) => setField('tags', e.target.value)} placeholder="e.g. Diabetes, Cardiac" />
+              </label>
+
+              <div>
+                <span style={lbl}>Emergency Contact</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                  <input style={inp} placeholder="Name" value={ef.emergencyName} onChange={(e) => setField('emergencyName', e.target.value)} />
+                  <input style={inp} placeholder="Relation" value={ef.emergencyRelation} onChange={(e) => setField('emergencyRelation', e.target.value)} />
+                  <input style={inp} placeholder="Phone" value={ef.emergencyPhone} onChange={(e) => setField('emergencyPhone', e.target.value)} />
+                </div>
+              </div>
+
+              <label>
+                <span style={lbl}>Insurance</span>
+                <input style={inp} value={ef.insurance} onChange={(e) => setField('insurance', e.target.value)} placeholder="Provider · Policy #" />
+              </label>
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border-card)', display: 'flex', justifyContent: 'flex-end', gap: 10, background: 'var(--surface-subtle)', borderRadius: '0 0 16px 16px', flexShrink: 0 }}>
+              <button onClick={closeEdit} style={{ background: 'transparent', color: 'var(--fg-on-light)', border: '1px solid var(--border-strong)', padding: '9px 18px', borderRadius: 8, fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={saveEdit} className="btn-primary">
+                <Check size={15} /> Save Changes
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
