@@ -3,13 +3,12 @@ import { createPortal } from 'react-dom';
 import { X, FlaskConical } from 'lucide-react';
 import { addPatientSubItem } from '../../firebase/services/patientService.js';
 
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const TODAY  = new Date().toISOString().slice(0, 10);
 
 function isoToDisplay(iso) {
   if (!iso) return '';
   const [y, m, d] = iso.split('-');
-  return `${+d} ${MONTHS[+m - 1]} ${y}`;
+  return `${d}/${m}/${y}`;
 }
 
 const STATUS_META = {
@@ -58,6 +57,7 @@ export default function AddLabModal({ open, patientId, onAdd, onClose }) {
         statusColor: meta.color,
         statusBg:    meta.bg,
         doctor:      form.doctor,
+        time:        new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
       };
       const ref = await addPatientSubItem(patientId, 'labs', data);
       onAdd({ id: ref.id, ...data });

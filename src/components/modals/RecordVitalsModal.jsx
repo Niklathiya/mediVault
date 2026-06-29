@@ -3,13 +3,12 @@ import { createPortal } from 'react-dom';
 import { X, Activity } from 'lucide-react';
 import { addPatientSubItem } from '../../firebase/services/patientService.js';
 
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const TODAY  = new Date().toISOString().slice(0, 10);
 
 function isoToDisplay(iso) {
   if (!iso) return '';
   const [y, m, d] = iso.split('-');
-  return `${+d} ${MONTHS[+m - 1]} ${y}`;
+  return `${d}/${m}/${y}`;
 }
 
 const empty = { date: TODAY, bp: '', pulse: '', temp: '', wt: '', ht: '', spo2: '' };

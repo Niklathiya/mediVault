@@ -81,9 +81,10 @@ export default function RegisterPatientModal({ open, onClose }) {
     try {
       const allergyArr = form.allergies.split(',').map((s) => s.trim()).filter(Boolean);
       const tagsArr    = form.tags.split(',').map((s) => s.trim()).filter(Boolean);
+      const formattedDob = form.dob ? form.dob.split('-').reverse().join('/') : '';
       await addPatient({
         name:      form.name,
-        dob:       form.dob,
+        dob:       formattedDob,
         age:       parseInt(form.age) || 0,
         sex:       form.sex,
         blood:     form.blood,

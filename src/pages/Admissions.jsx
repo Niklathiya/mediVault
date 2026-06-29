@@ -16,9 +16,54 @@ const STATUS_BADGE = {
 const fmtDate = (iso) => {
   if (!iso) return '—';
   const [y, m, d] = iso.split('-');
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return `${d} ${months[+m - 1]} ${y}`;
+  return `${d}/${m}/${y}`;
 };
+
+function Tooltip({ text, children }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div
+      style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
+      onMouseEnter={() => setVisible(true)}
+      onMouseLeave={() => setVisible(false)}
+    >
+      {children}
+      {visible && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '100%',
+            left: '50%',
+            transform: 'translateX(-50%) translateY(-6px)',
+            background: 'var(--fg-on-light, #0f172a)',
+            color: 'var(--surface, #ffffff)',
+            padding: '6px 10px',
+            borderRadius: 6,
+            fontSize: 11,
+            fontWeight: 500,
+            whiteSpace: 'nowrap',
+            zIndex: 1000,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            pointerEvents: 'none',
+          }}
+        >
+          {text}
+          <div
+            style={{
+              position: 'absolute',
+              top: '100%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              borderWidth: 5,
+              borderStyle: 'solid',
+              borderColor: 'var(--fg-on-light, #0f172a) transparent transparent transparent',
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
 const daysAdmitted = (admittedOn, dischargedOn) => {
   const end = dischargedOn || TODAY;
@@ -72,7 +117,7 @@ export default function Admissions() {
     const a = admissions.find((x) => x.id === id);
     if (!a) return;
     if (a.status === 'admitted') {
-      dischargeAdmission(id, TODAY, new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }));
+      dischargeAdmission(id, TODAY, new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }));
     } else {
       updateAdmission(id, { status: 'admitted', dischargedOn: null, dischargedTime: null });
     }
@@ -186,7 +231,15 @@ export default function Admissions() {
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--fg-on-light)', display: 'flex', alignItems: 'center', gap: 5 }}>
                       {a.patientName}
-                      {a.hasAllergy && <AlertTriangle size={12} color="#d95050" />}
+                      {a.hasAllergy && (
+                        <Tooltip text={Array.isArray(a.allergies) && a.allergies.length > 0 ? `Allergies: ${a.allergies.join(', ')}` : 'Has allergy'}>
+                          <AlertTriangle
+                            size={12}
+                            color="#d95050"
+                            style={{ cursor: 'help' }}
+                          />
+                        </Tooltip>
+                      )}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--fg-on-light-muted)', marginTop: 1 }}>
                       {a.age} yrs / {a.sex === 'Male' ? 'M' : 'F'} · {a.reason.length > 28 ? a.reason.slice(0, 28) + '…' : a.reason}

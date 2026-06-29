@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, useOutletContext } from 'react-router-dom';
+import { useNavigate, useOutletContext, useLocation } from 'react-router-dom';
 import { Plus, AlertTriangle, X, Pencil, Archive, Check } from 'lucide-react';
 import CustomSelect from '../components/ui/CustomSelect';
 import MultiSelect from '../components/ui/MultiSelect';
@@ -49,13 +49,66 @@ const calculateAge = (dob) => {
 const fmtReg = (iso) => {
   if (!iso) return '';
   const [y, m, d] = iso.split('-');
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return `${d} ${months[+m - 1]} ${y}`;
+  return `${d}/${m}/${y}`;
 };
+
+function Tooltip({ text, children }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div
+      style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
+      onMouseEnter={() => setVisible(true)}
+      onMouseLeave={() => setVisible(false)}
+    >
+      {children}
+      {visible && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '100%',
+            left: '50%',
+            transform: 'translateX(-50%) translateY(-6px)',
+            background: 'var(--fg-on-light, #0f172a)',
+            color: 'var(--surface, #ffffff)',
+            padding: '6px 10px',
+            borderRadius: 6,
+            fontSize: 11,
+            fontWeight: 500,
+            whiteSpace: 'nowrap',
+            zIndex: 1000,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            pointerEvents: 'none',
+          }}
+        >
+          {text}
+          <div
+            style={{
+              position: 'absolute',
+              top: '100%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              borderWidth: 5,
+              borderStyle: 'solid',
+              borderColor: 'var(--fg-on-light, #0f172a) transparent transparent transparent',
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Patients() {
   const navigate = useNavigate();
   const { openRegisterModal } = useOutletContext();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.state?.openRegister) {
+      openRegisterModal();
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, openRegisterModal, navigate]);
 
   const [patients, setPatients] = useState([]);
   const [loading, setLoading]   = useState(true);
@@ -98,9 +151,10 @@ export default function Patients() {
 
   const openEdit = (p) => {
     setEditId(p.id);
+    const dbDob = p.dob && p.dob.includes('/') ? p.dob.split('/').reverse().join('-') : (p.dob || '');
     setEditForm({
       name:              p.name,
-      dob:               p.dob || '',
+      dob:               dbDob,
       age:               p.age,
       sex:               p.sex,
       blood:             p.blood,
@@ -131,9 +185,10 @@ export default function Patients() {
     const initials   = newName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
     const tagsArr    = ef.tags.split(',').map((s) => s.trim()).filter(Boolean);
     const allergyArr = ef.allergies.split(',').map((s) => s.trim()).filter(Boolean);
+    const dbDob = ef.dob && ef.dob.includes('-') ? ef.dob.split('-').reverse().join('/') : (ef.dob || '');
     await updatePatient(editId, {
       name: newName, initials,
-      dob: ef.dob, age: ef.age, sex: ef.sex, blood: ef.blood,
+      dob: dbDob, age: ef.age, sex: ef.sex, blood: ef.blood,
       phone: ef.phone, email: ef.email, address: ef.address,
       allergies: allergyArr, hasAllergy: allergyArr.length > 0,
       tags: tagsArr,
@@ -325,7 +380,15 @@ export default function Patients() {
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--fg-on-light)', display: 'flex', alignItems: 'center', gap: 6 }}>
                       {p.name}
-                      {p.hasAllergy && <AlertTriangle size={13} color="#d95050" />}
+                      {p.hasAllergy && (
+                        <Tooltip text={Array.isArray(p.allergies) && p.allergies.length > 0 ? `Allergies: ${p.allergies.join(', ')}` : 'Has allergy'}>
+                          <AlertTriangle
+                            size={13}
+                            color="#d95050"
+                            style={{ cursor: 'help' }}
+                          />
+                        </Tooltip>
+                      )}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--fg-on-light-muted)' }}>{p.id} · Reg {fmtReg(p.registered)}</div>
                   </div>

@@ -3,13 +3,12 @@ import { createPortal } from 'react-dom';
 import { X, Pill } from 'lucide-react';
 import { addPatientSubItem } from '../../firebase/services/patientService.js';
 
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const TODAY  = new Date().toISOString().slice(0, 10);
 
 function isoToDisplay(iso) {
   if (!iso) return '';
   const [y, m, d] = iso.split('-');
-  return `${+d} ${MONTHS[+m - 1]} ${y}`;
+  return `${d}/${m}/${y}`;
 }
 
 const empty = { drug: '', date: TODAY, dosage: '', frequency: '', duration: '', doctor: '', instructions: '' };
@@ -48,6 +47,7 @@ export default function AddPrescriptionModal({ open, patientId, onAdd, onClose }
         duration:     form.duration,
         doctor:       form.doctor,
         instructions: form.instructions,
+        time:         new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
       };
       const ref = await addPatientSubItem(patientId, 'prescriptions', data);
       onAdd({ id: ref.id, ...data });

@@ -25,6 +25,6 @@ export function subscribeLogs(cb, onErr) {
 /** Append a new activity log entry */
 export async function addLog(data) {
   const today = new Date().toISOString().slice(0, 10);
-  const time  = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  const time  = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
   return addDoc(collection(db, COL), { ...data, date: today, time });
 }
