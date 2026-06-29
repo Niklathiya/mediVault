@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Settings,
 } from 'lucide-react';
+import { useRBAC } from '../../context/RBACContext';
 
 const NAV_ITEM_STYLE = {
   display: 'flex',
@@ -102,6 +103,7 @@ function SectionLabel({ children }) {
 
 export default function Sidebar() {
   const navigate = useNavigate();
+  const { profile, roleLabel, canAccess } = useRBAC();
   const [teamOpen, setTeamOpen] = useState(false);
   const location = useLocation();
   const isTeamActive = [
@@ -157,25 +159,30 @@ export default function Sidebar() {
             sub="Overview &amp; quick actions"
           />
 
-          <SectionLabel>Clinical</SectionLabel>
-          <SideNavItem
-            to="/patients"
-            icon={Users}
-            label="Patients"
-            sub="Register &amp; manage records"
-            badge={6}
-          />
-          <SideNavItem
-            to="/admissions"
-            icon={BedDouble}
-            label="IPD Admissions"
-            sub="In-patient care &amp; case files"
-            badge={5}
-          />
+          {(canAccess('patients') || canAccess('admissions')) && <SectionLabel>Clinical</SectionLabel>}
+          {canAccess('patients') && (
+            <SideNavItem
+              to="/patients"
+              icon={Users}
+              label="Patients"
+              sub="Register &amp; manage records"
+              badge={6}
+            />
+          )}
+          {canAccess('admissions') && (
+            <SideNavItem
+              to="/admissions"
+              icon={BedDouble}
+              label="IPD Admissions"
+              sub="In-patient care &amp; case files"
+              badge={5}
+            />
+          )}
 
-          <SectionLabel>Team</SectionLabel>
+          {canAccess('staff') && <SectionLabel>Team</SectionLabel>}
           {/* Expandable Staff menu */}
-          <button
+          {canAccess('staff') && (
+            <button
             onClick={() => setTeamOpen((o) => !o)}
             style={{
               ...NAV_ITEM_STYLE,
@@ -206,8 +213,9 @@ export default function Sidebar() {
               <ChevronRight size={14} style={{ opacity: 0.5 }} />
             )}
           </button>
+          )}
 
-          {teamOpen && (
+          {teamOpen && canAccess('staff') && (
             <div style={{ paddingLeft: 12, display: 'flex', flexDirection: 'column', gap: 2 }}>
               <SideNavItem to="/staff/doctors" icon={Stethoscope} label="Doctors" />
               <SideNavItem to="/staff/nurses" icon={HeartPulse} label="Nurses" />
@@ -216,16 +224,22 @@ export default function Sidebar() {
             </div>
           )}
 
-          <SectionLabel>Finance</SectionLabel>
-          <SideNavItem to="/billing" icon={Receipt} label="Billing" sub="Invoices &amp; payments" />
-          <SectionLabel>Reports</SectionLabel>
-          <SideNavItem
-            to="/activity"
-            icon={Activity}
-            label="Activity Log"
-            sub="All digital records"
-          />
-          <SideNavItem to="/analytics" icon={BarChart2} label="Analytics" sub="Monthly reports" />
+          {canAccess('billing') && <SectionLabel>Finance</SectionLabel>}
+          {canAccess('billing') && (
+            <SideNavItem to="/billing" icon={Receipt} label="Billing" sub="Invoices &amp; payments" />
+          )}
+          {(canAccess('activity') || canAccess('analytics')) && <SectionLabel>Reports</SectionLabel>}
+          {canAccess('activity') && (
+            <SideNavItem
+              to="/activity"
+              icon={Activity}
+              label="Activity Log"
+              sub="All digital records"
+            />
+          )}
+          {canAccess('analytics') && (
+            <SideNavItem to="/analytics" icon={BarChart2} label="Analytics" sub="Monthly reports" />
+          )}
         </nav>
       </div>
 
@@ -248,9 +262,9 @@ export default function Sidebar() {
               fontWeight: 700,
               flexShrink: 0,
             }}
-          >
-            DR
-          </div>
+            >
+              {profile.initials}
+            </div>
           <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
             <div
               style={{
@@ -262,20 +276,23 @@ export default function Sidebar() {
                 whiteSpace: 'nowrap',
               }}
             >
-              Dr. Reception
+              {profile.userName}
             </div>
             <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', marginTop: 1 }}>
-              Administrator
+              {roleLabel}
             </div>
           </div>
           <button
-            onClick={() => navigate('/settings')}
+            onClick={() => {
+              if (canAccess('settings')) navigate('/settings');
+            }}
             style={{
               background: 'transparent',
               border: 'none',
               color: 'rgba(255,255,255,0.4)',
-              cursor: 'pointer',
+              cursor: canAccess('settings') ? 'pointer' : 'not-allowed',
               padding: 4,
+              opacity: canAccess('settings') ? 1 : 0.4,
             }}
           >
             <Settings size={14} />

@@ -5,6 +5,7 @@ import CustomSelect from '../components/ui/CustomSelect';
 import { subscribeAdmissions, dischargeAdmission, updateAdmission } from '../firebase/services/admissionService.js';
 import { doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebase.js';
+import { useRBAC } from '../context/RBACContext';
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
@@ -86,6 +87,7 @@ const selectStyle = {
 export default function Admissions() {
   const navigate = useNavigate();
   const { openNewAdmissionModal } = useOutletContext();
+  const { canManageAdmissions, canToggleAdmissionStatus } = useRBAC();
 
   const [admissions, setAdmissions] = useState([]);
   const [loading, setLoading]       = useState(true);
@@ -158,9 +160,11 @@ export default function Admissions() {
             <option value="discharged">Discharged</option>
             <option value="all">All admissions</option>
           </CustomSelect>
-          <button className="btn-primary" onClick={openNewAdmissionModal}>
-            <Plus size={16} /> Admit patient
-          </button>
+          {canManageAdmissions && (
+            <button className="btn-primary" onClick={openNewAdmissionModal}>
+              <Plus size={16} /> Admit patient
+            </button>
+          )}
         </div>
       </div>
 
@@ -272,20 +276,24 @@ export default function Admissions() {
 
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                  <button
-                    onClick={(e) => toggleDischarge(a.id, e)}
-                    title={a.status === 'admitted' ? 'Mark discharged' : 'Re-admit'}
-                    style={{ ...iconBtn, color: a.status === 'admitted' ? '#0891b2' : '#15803d' }}
-                  >
-                    {a.status === 'admitted' ? <LogOut size={13} /> : <LogIn size={13} />}
-                  </button>
-                  <button
-                    onClick={(e) => deleteAdmission(a.id, e)}
-                    title="Delete admission"
-                    style={{ ...iconBtn, border: '1px solid rgba(217,80,80,0.30)', color: '#d95050' }}
-                  >
-                    <Trash2 size={13} />
-                  </button>
+                  {canToggleAdmissionStatus && (
+                    <>
+                      <button
+                        onClick={(e) => toggleDischarge(a.id, e)}
+                        title={a.status === 'admitted' ? 'Mark discharged' : 'Re-admit'}
+                        style={{ ...iconBtn, color: a.status === 'admitted' ? '#0891b2' : '#15803d' }}
+                      >
+                        {a.status === 'admitted' ? <LogOut size={13} /> : <LogIn size={13} />}
+                      </button>
+                      <button
+                        onClick={(e) => deleteAdmission(a.id, e)}
+                        title="Delete admission"
+                        style={{ ...iconBtn, border: '1px solid rgba(217,80,80,0.30)', color: '#d95050' }}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             );

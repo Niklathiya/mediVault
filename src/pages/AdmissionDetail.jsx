@@ -6,6 +6,7 @@ import {
   dischargeAdmission,
   updateAdmission,
 } from '../firebase/services/admissionService.js';
+import { useRBAC } from '../context/RBACContext';
 import {
   ArrowLeft,
   LayoutGrid,
@@ -589,6 +590,7 @@ function DischargeSummaryOverlay({ adm, onClose, onPrint }) {
 export default function AdmissionDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { canUseIpdTab, canEditIpdTab, canToggleAdmissionStatus, canAccess } = useRBAC();
   const [activeTab, setActiveTab] = useState('overview');
   const [showDS, setShowDS] = useState(false);
   const [entryModal, setEntryModal] = useState(null);
@@ -629,6 +631,12 @@ export default function AdmissionDetail() {
 
   const days = daysCount(adm.admittedOn, adm.dischargedOn);
   const cf = adm.casefile || {};
+  const visibleNavSections = NAV_SECTIONS.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => canUseIpdTab(item.id)),
+  })).filter((section) => section.items.length > 0);
+  const visibleProgress = FORM_PROGRESS.filter((item) => canUseIpdTab(item.id));
+  const currentTab = canUseIpdTab(activeTab) ? activeTab : 'overview';
 
   const iconBtnSm = {
     background: 'transparent',
@@ -667,6 +675,29 @@ export default function AdmissionDetail() {
   const statusBadge = isAdmitted
     ? { color: '#0891b2', bg: 'rgba(8,145,178,0.10)', label: 'Admitted' }
     : { color: '#15803d', bg: 'rgba(78,179,116,0.10)', label: 'Discharged' };
+
+  const entryTypeToTab = {
+    consent: 'consent',
+    'past-history': 'past-history',
+    triage: 'triage',
+    history: 'history',
+    'care-plan': 'care-plan',
+    medications: 'medications',
+    clinical: 'clinical',
+    nursing: 'nursing',
+    pathology: 'investigations',
+    radiology: 'investigations',
+    cardiology: 'investigations',
+    equipment: 'procedures',
+    dressing: 'procedures',
+    traction: 'procedures',
+    rounds: 'visits',
+  };
+
+  const openEntryModal = (type) => {
+    const targetTab = entryTypeToTab[type] || currentTab;
+    if (canEditIpdTab(targetTab)) setEntryModal(type);
+  };
 
   const handleSaveEntry = async (updates) => {
     const updatedAdm = { ...adm };
@@ -1563,54 +1594,58 @@ export default function AdmissionDetail() {
           </div>
         </div>
 
-        {/* Action buttons */}
+        {/* Action buttons — max 2 per row */}
         <div
           style={{
-            display: 'flex',
+            display: 'grid',
+            gridTemplateColumns: 'auto auto',
             gap: 8,
             flexShrink: 0,
-            flexWrap: 'wrap',
-            justifyContent: 'flex-end',
+            alignItems: 'start',
           }}
         >
-          <button
-            onClick={() => setShowDS(true)}
-            style={{
-              background: C.primary,
-              color: 'white',
-              border: 'none',
-              padding: '8px 12px',
-              borderRadius: 8,
-              fontFamily: 'inherit',
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 5,
-            }}
-          >
-            <FileText size={13} /> Discharge Summary
-          </button>
-          <button
-            onClick={() => navigate(`/patients/${adm.mrNo}`)}
-            style={{
-              background: 'transparent',
-              border: `1px solid ${C.border}`,
-              padding: '8px 12px',
-              borderRadius: 8,
-              fontFamily: 'inherit',
-              fontSize: 12,
-              fontWeight: 500,
-              color: C.text,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 5,
-            }}
-          >
-            <User size={13} /> Patient profile
-          </button>
+          {canEditIpdTab('clinical') && (
+            <button
+              onClick={() => setShowDS(true)}
+              style={{
+                background: C.primary,
+                color: 'white',
+                border: 'none',
+                padding: '8px 12px',
+                borderRadius: 8,
+                fontFamily: 'inherit',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+              }}
+            >
+              <FileText size={13} /> Discharge Summary
+            </button>
+          )}
+          {canAccess('patients') && (
+            <button
+              onClick={() => navigate(`/patients/${adm.mrNo}`)}
+              style={{
+                background: 'transparent',
+                border: `1px solid ${C.border}`,
+                padding: '8px 12px',
+                borderRadius: 8,
+                fontFamily: 'inherit',
+                fontSize: 12,
+                fontWeight: 500,
+                color: C.text,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+              }}
+            >
+              <User size={13} /> Patient profile
+            </button>
+          )}
           <button
             onClick={printAdmission}
             style={{
@@ -1630,63 +1665,65 @@ export default function AdmissionDetail() {
           >
             <Printer size={13} /> Print
           </button>
-          <button
-            onClick={() => {
-              const now = new Date().toLocaleTimeString('en-IN', {
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true,
-              });
-              if (isAdmitted) {
-                if (!window.confirm('Are you sure you want to discharge this patient?')) return;
-                dischargeAdmission(id, TODAY, now).then(() =>
-                  setAdm((prev) => ({
-                    ...prev,
-                    status: 'discharged',
-                    dischargedOn: TODAY,
-                    dischargedTime: now,
-                  })),
-                );
-              } else {
-                updateAdmission(id, {
-                  status: 'admitted',
-                  dischargedOn: null,
-                  dischargedTime: null,
-                }).then(() =>
-                  setAdm((prev) => ({
-                    ...prev,
+          {canToggleAdmissionStatus && (
+            <button
+              onClick={() => {
+                const now = new Date().toLocaleTimeString('en-IN', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: true,
+                });
+                if (isAdmitted) {
+                  if (!window.confirm('Are you sure you want to discharge this patient?')) return;
+                  dischargeAdmission(id, TODAY, now).then(() =>
+                    setAdm((prev) => ({
+                      ...prev,
+                      status: 'discharged',
+                      dischargedOn: TODAY,
+                      dischargedTime: now,
+                    })),
+                  );
+                } else {
+                  updateAdmission(id, {
                     status: 'admitted',
                     dischargedOn: null,
                     dischargedTime: null,
-                  })),
-                );
-              }
-            }}
-            style={{
-              background: isAdmitted ? '#d95050' : '#15803d',
-              color: 'white',
-              border: 'none',
-              padding: '8px 12px',
-              borderRadius: 8,
-              fontFamily: 'inherit',
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 5,
-            }}
-          >
-            {isAdmitted ? (
-              <>
-                <LogOut size={13} /> Mark Discharged
-              </>
-            ) : (
-              <>
-                <LogIn size={13} /> Re-admit
-              </>
-            )}
-          </button>
+                  }).then(() =>
+                    setAdm((prev) => ({
+                      ...prev,
+                      status: 'admitted',
+                      dischargedOn: null,
+                      dischargedTime: null,
+                    })),
+                  );
+                }
+              }}
+              style={{
+                background: isAdmitted ? '#d95050' : '#15803d',
+                color: 'white',
+                border: 'none',
+                padding: '8px 12px',
+                borderRadius: 8,
+                fontFamily: 'inherit',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+              }}
+            >
+              {isAdmitted ? (
+                <>
+                  <LogOut size={13} /> Mark Discharged
+                </>
+              ) : (
+                <>
+                  <LogIn size={13} /> Re-admit
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
@@ -1744,7 +1781,7 @@ export default function AdmissionDetail() {
           >
             Case file
           </div>
-          {NAV_SECTIONS.map((section, si) => (
+          {visibleNavSections.map((section, si) => (
             <div key={si}>
               {section.label && (
                 <div
@@ -1762,7 +1799,7 @@ export default function AdmissionDetail() {
               )}
               {section.items.map((item) => {
                 const Icon = item.icon;
-                const isActive = activeTab === item.id;
+                const isActive = currentTab === item.id;
                 const filled = item.dotKey ? !!adm[item.dotKey] : false;
                 const count = item.countKey ? adm[item.countKey] : null;
                 return (
@@ -1807,9 +1844,9 @@ export default function AdmissionDetail() {
         </nav>
 
         {/* Right pane */}
-        <div key={activeTab} style={{ animation: 'mv-fade 150ms ease both' }}>
+        <div key={currentTab} style={{ animation: 'mv-fade 150ms ease both' }}>
           {/* ─── OVERVIEW ─── */}
-          {activeTab === 'overview' && (
+          {currentTab === 'overview' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 {/* Admission summary */}
@@ -1882,7 +1919,7 @@ export default function AdmissionDetail() {
               >
                 <SectionHeader title="Case file progress" />
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
-                  {FORM_PROGRESS.map((fp) => {
+                  {visibleProgress.map((fp) => {
                     const Icon = fp.icon;
                     const isDone = fp.dotKey
                       ? !!adm[fp.dotKey]
@@ -1933,7 +1970,7 @@ export default function AdmissionDetail() {
           )}
 
           {/* ─── CONSENT ─── */}
-          {activeTab === 'consent' && (
+          {currentTab === 'consent' && (
             <div
               style={{
                 background: C.surface,
@@ -1977,7 +2014,7 @@ export default function AdmissionDetail() {
                     </span>
                   ) : (
                     <button
-                      onClick={() => setEntryModal('consent')}
+                      onClick={() => openEntryModal('consent')}
                       className="btn-primary"
                       style={{ padding: '6px 12px', fontSize: 12 }}
                     >
@@ -1986,7 +2023,7 @@ export default function AdmissionDetail() {
                   )}
                   {adm.consent && (
                     <button
-                      onClick={() => setEntryModal('consent')}
+                      onClick={() => openEntryModal('consent')}
                       style={{
                         background: 'transparent',
                         border: `1px solid ${C.border}`,
@@ -2078,7 +2115,7 @@ export default function AdmissionDetail() {
           )}
 
           {/* ─── PAST HISTORY ─── */}
-          {activeTab === 'past-history' && (
+          {currentTab === 'past-history' && (
             <div
               style={{
                 background: C.surface,
@@ -2099,7 +2136,7 @@ export default function AdmissionDetail() {
                   Past History & Drug Allergy Declaration
                 </h2>
                 <button
-                  onClick={() => setEntryModal('past-history')}
+                  onClick={() => openEntryModal('past-history')}
                   className="btn-primary"
                   style={{ padding: '6px 12px', fontSize: 12 }}
                 >
@@ -2186,7 +2223,7 @@ export default function AdmissionDetail() {
           )}
 
           {/* ─── TRIAGE ─── */}
-          {activeTab === 'triage' && (
+          {currentTab === 'triage' && (
             <div
               style={{
                 background: C.surface,
@@ -2207,7 +2244,7 @@ export default function AdmissionDetail() {
                   Emergency Severity Index (ESI) — Triage
                 </h2>
                 <button
-                  onClick={() => setEntryModal('triage')}
+                  onClick={() => openEntryModal('triage')}
                   className="btn-primary"
                   style={{ padding: '6px 12px', fontSize: 12 }}
                 >
@@ -2337,7 +2374,7 @@ export default function AdmissionDetail() {
           )}
 
           {/* ─── HISTORY ─── */}
-          {activeTab === 'history' && (
+          {currentTab === 'history' && (
             <div
               style={{
                 background: C.surface,
@@ -2358,7 +2395,7 @@ export default function AdmissionDetail() {
                   Patient History & Clinical Examination
                 </h2>
                 <button
-                  onClick={() => setEntryModal('history')}
+                  onClick={() => openEntryModal('history')}
                   className="btn-primary"
                   style={{ padding: '6px 12px', fontSize: 12 }}
                 >
@@ -2431,7 +2468,7 @@ export default function AdmissionDetail() {
           )}
 
           {/* ─── CARE PLAN ─── */}
-          {activeTab === 'care-plan' && (
+          {currentTab === 'care-plan' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div
                 style={{
@@ -2453,7 +2490,7 @@ export default function AdmissionDetail() {
                     Care Plan
                   </h2>
                   <button
-                    onClick={() => setEntryModal('care-plan')}
+                    onClick={() => openEntryModal('care-plan')}
                     className="btn-primary"
                     style={{ padding: '6px 12px', fontSize: 12 }}
                   >
@@ -2566,7 +2603,7 @@ export default function AdmissionDetail() {
           )}
 
           {/* ─── MEDICATIONS ─── */}
-          {activeTab === 'medications' && (
+          {currentTab === 'medications' && (
             <div
               style={{
                 background: C.surface,
@@ -2588,7 +2625,7 @@ export default function AdmissionDetail() {
                   Medication Reconciliation
                 </h2>
                 <button
-                  onClick={() => setEntryModal('medications')}
+                  onClick={() => openEntryModal('medications')}
                   className="btn-primary"
                   style={{ fontSize: 12 }}
                 >
@@ -2669,7 +2706,7 @@ export default function AdmissionDetail() {
           )}
 
           {/* ─── TREATMENT CHART ─── */}
-          {activeTab === 'treatment' && (
+          {currentTab === 'treatment' && (
             <div
               style={{
                 background: C.surface,
@@ -2861,7 +2898,7 @@ export default function AdmissionDetail() {
           )}
 
           {/* ─── CLINICAL NOTES ─── */}
-          {activeTab === 'clinical' && (
+          {currentTab === 'clinical' && (
             <div
               style={{
                 background: C.surface,
@@ -2883,7 +2920,7 @@ export default function AdmissionDetail() {
                   Clinical Notes
                 </h2>
                 <button
-                  onClick={() => setEntryModal('clinical')}
+                  onClick={() => openEntryModal('clinical')}
                   className="btn-primary"
                   style={{ fontSize: 12 }}
                 >
@@ -2983,7 +3020,7 @@ export default function AdmissionDetail() {
           )}
 
           {/* ─── NURSING NOTES ─── */}
-          {activeTab === 'nursing' && (
+          {currentTab === 'nursing' && (
             <div
               style={{
                 background: C.surface,
@@ -3005,7 +3042,7 @@ export default function AdmissionDetail() {
                   Nursing Notes
                 </h2>
                 <button
-                  onClick={() => setEntryModal('nursing')}
+                  onClick={() => openEntryModal('nursing')}
                   className="btn-primary"
                   style={{ fontSize: 12 }}
                 >
@@ -3067,7 +3104,7 @@ export default function AdmissionDetail() {
           )}
 
           {/* ─── INVESTIGATIONS ─── */}
-          {activeTab === 'investigations' && (
+          {currentTab === 'investigations' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div
                 style={{
@@ -3090,7 +3127,7 @@ export default function AdmissionDetail() {
                     Investigations
                   </h2>
                   <button
-                    onClick={() => setEntryModal(invSubTab)}
+                    onClick={() => openEntryModal(invSubTab)}
                     className="btn-primary"
                     style={{ fontSize: 12 }}
                   >
@@ -3323,7 +3360,7 @@ export default function AdmissionDetail() {
           )}
 
           {/* ─── PROCEDURES & EQUIPMENT ─── */}
-          {activeTab === 'procedures' && (
+          {currentTab === 'procedures' && (
             <div
               style={{
                 background: C.surface,
@@ -3345,7 +3382,7 @@ export default function AdmissionDetail() {
                   Procedures & Equipment
                 </h2>
                 <button
-                  onClick={() => setEntryModal(procSubTab)}
+                  onClick={() => openEntryModal(procSubTab)}
                   className="btn-primary"
                   style={{ fontSize: 12 }}
                 >
@@ -3596,7 +3633,7 @@ export default function AdmissionDetail() {
           )}
 
           {/* ─── RECORD OF VISITS ─── */}
-          {activeTab === 'visits' && (
+          {currentTab === 'visits' && (
             <div
               style={{
                 background: C.surface,
@@ -3618,7 +3655,7 @@ export default function AdmissionDetail() {
                   Record of Visits
                 </h2>
                 <button
-                  onClick={() => setEntryModal('rounds')}
+                  onClick={() => openEntryModal('rounds')}
                   className="btn-primary"
                   style={{ fontSize: 12 }}
                 >
@@ -3716,7 +3753,7 @@ export default function AdmissionDetail() {
       </div>
 
       {/* Discharge Summary overlay */}
-      {showDS && (
+      {showDS && canEditIpdTab('clinical') && (
         <DischargeSummaryOverlay
           adm={adm}
           onClose={() => setShowDS(false)}
@@ -3727,7 +3764,7 @@ export default function AdmissionDetail() {
         />
       )}
 
-      {entryModal && (
+      {entryModal && canEditIpdTab(entryTypeToTab[entryModal] || currentTab) && (
         <CaseFileEntryModal
           type={entryModal}
           adm={adm}

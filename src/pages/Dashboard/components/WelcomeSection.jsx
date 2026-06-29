@@ -1,5 +1,6 @@
 import { UserPlus } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
+import { useRBAC } from '../../../context/RBACContext';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTHS = [
@@ -31,6 +32,7 @@ function todayStr() {
 
 export default function WelcomeSection() {
   const { openRegisterModal } = useOutletContext();
+  const { canRegisterPatient, profile } = useRBAC();
 
   return (
     <div
@@ -62,16 +64,18 @@ export default function WelcomeSection() {
             color: 'var(--fg-on-light)',
           }}
         >
-          Good {getGreeting()}, Dr. Reception
+          Good {getGreeting()}, {profile.userName}
         </h1>
         <p style={{ margin: '6px 0 0', color: 'var(--fg-on-light-muted)', fontSize: 15 }}>
           Here's what's happening across the hospital today.
         </p>
       </div>
-      <button className="btn-primary" onClick={openRegisterModal}>
-        <UserPlus size={16} />
-        Register patient
-      </button>
+      {canRegisterPatient && (
+        <button className="btn-primary" onClick={openRegisterModal}>
+          <UserPlus size={16} />
+          Register patient
+        </button>
+      )}
     </div>
   );
 }

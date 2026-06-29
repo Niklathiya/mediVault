@@ -12,6 +12,7 @@ import AddLabModal from '../components/modals/AddLabModal.jsx';
 import RecordVitalsModal from '../components/modals/RecordVitalsModal.jsx';
 import AddDocumentModal from '../components/modals/AddDocumentModal.jsx';
 import NewAdmissionModal from '../components/modals/NewAdmissionModal.jsx';
+import { useRBAC } from '../context/RBACContext';
 import {
   ArrowLeft,
   FileText,
@@ -222,6 +223,16 @@ const EMPTY_EDIT = {
 export default function PatientDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const {
+    patientTabs,
+    canEditPatientProfile,
+    canAddVisit,
+    canAddPrescription,
+    canAddLab,
+    canRecordVitals,
+    canViewBilling,
+    canManageAdmissions,
+  } = useRBAC();
   const [tab, setTab] = useState('overview');
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -268,6 +279,7 @@ export default function PatientDetail() {
   const statusBadge = STATUS_BADGE[patient.status] ?? STATUS_BADGE.active;
   const ef = editForm !== null ? editForm : EMPTY_EDIT;
   const isEditOpen = editOpen;
+  const visibleTabs = TABS.filter((t) => patientTabs.includes(t.id) && (t.id !== 'billing' || canViewBilling));
 
   const openEdit = () => {
     setEditForm({
@@ -580,25 +592,27 @@ export default function PatientDetail() {
             >
               <Printer size={14} /> Print
             </button>
-            <button
-              onClick={openEdit}
-              style={{
-                background: 'transparent',
-                color: C.text,
-                border: `1px solid ${C.border}`,
-                padding: '8px 14px',
-                borderRadius: 8,
-                fontFamily: 'inherit',
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-              }}
-            >
-              <Pencil size={14} /> Edit
-            </button>
+            {canEditPatientProfile && (
+              <button
+                onClick={openEdit}
+                style={{
+                  background: 'transparent',
+                  color: C.text,
+                  border: `1px solid ${C.border}`,
+                  padding: '8px 14px',
+                  borderRadius: 8,
+                  fontFamily: 'inherit',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <Pencil size={14} /> Edit
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -642,7 +656,7 @@ export default function PatientDetail() {
           msOverflowStyle: 'none',
         }}
       >
-        {TABS.map((t) => {
+        {visibleTabs.map((t) => {
           const Icon = t.icon;
           const count = t.countKey ? patient[t.countKey]?.length : null;
           return (
@@ -801,13 +815,15 @@ export default function PatientDetail() {
               <div style={{ fontSize: 13, color: C.muted }}>
                 Chronological clinical visit history
               </div>
-              <button
-                className="btn-primary"
-                style={{ fontSize: 13 }}
-                onClick={() => setVisitModal(true)}
-              >
-                <Plus size={14} /> Add visit
-              </button>
+              {canAddVisit && (
+                <button
+                  className="btn-primary"
+                  style={{ fontSize: 13 }}
+                  onClick={() => setVisitModal(true)}
+                >
+                  <Plus size={14} /> Add visit
+                </button>
+              )}
             </div>
             {patient.visits.length === 0 ? (
               <div
@@ -929,13 +945,17 @@ export default function PatientDetail() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <ActionBtn icon={Printer} title="Print" />
-                    <ActionBtn icon={Pencil} title="Edit" />
-                    <ActionBtn
-                      icon={Trash2}
-                      title="Delete"
-                      danger
-                      onClick={() => removeItem('visits', v.id)}
-                    />
+                    {canAddVisit && (
+                      <>
+                        <ActionBtn icon={Pencil} title="Edit" />
+                        <ActionBtn
+                          icon={Trash2}
+                          title="Delete"
+                          danger
+                          onClick={() => removeItem('visits', v.id)}
+                        />
+                      </>
+                    )}
                   </div>
                 </div>
               ))
@@ -957,13 +977,15 @@ export default function PatientDetail() {
               <div style={{ fontSize: 13, color: C.muted }}>
                 All medications prescribed to this patient
               </div>
-              <button
-                className="btn-primary"
-                style={{ fontSize: 13 }}
-                onClick={() => setPrescriptionModal(true)}
-              >
-                <Plus size={14} /> Add prescription
-              </button>
+              {canAddPrescription && (
+                <button
+                  className="btn-primary"
+                  style={{ fontSize: 13 }}
+                  onClick={() => setPrescriptionModal(true)}
+                >
+                  <Plus size={14} /> Add prescription
+                </button>
+              )}
             </div>
             <div
               style={{
@@ -1019,13 +1041,17 @@ export default function PatientDetail() {
                     <div style={{ fontSize: 12, color: C.muted }}>{rx.doctor}</div>
                     <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
                       <ActionBtn icon={Printer} title="Print" />
-                      <ActionBtn icon={Pencil} title="Edit" />
-                      <ActionBtn
-                        icon={Trash2}
-                        title="Delete"
-                        danger
-                        onClick={() => removeItem('prescriptions', rx.id)}
-                      />
+                      {canAddPrescription && (
+                        <>
+                          <ActionBtn icon={Pencil} title="Edit" />
+                          <ActionBtn
+                            icon={Trash2}
+                            title="Delete"
+                            danger
+                            onClick={() => removeItem('prescriptions', rx.id)}
+                          />
+                        </>
+                      )}
                     </div>
                   </div>
                 ))
@@ -1046,13 +1072,15 @@ export default function PatientDetail() {
               }}
             >
               <div style={{ fontSize: 13, color: C.muted }}>Diagnostic lab tests and reports</div>
-              <button
-                className="btn-primary"
-                style={{ fontSize: 13 }}
-                onClick={() => setLabModal(true)}
-              >
-                <Plus size={14} /> Add lab result
-              </button>
+              {canAddLab && (
+                <button
+                  className="btn-primary"
+                  style={{ fontSize: 13 }}
+                  onClick={() => setLabModal(true)}
+                >
+                  <Plus size={14} /> Add lab result
+                </button>
+              )}
             </div>
             <div
               style={{
@@ -1130,13 +1158,17 @@ export default function PatientDetail() {
                     </div>
                     <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
                       <ActionBtn icon={Printer} title="Print" />
-                      <ActionBtn icon={Pencil} title="Edit" />
-                      <ActionBtn
-                        icon={Trash2}
-                        title="Delete"
-                        danger
-                        onClick={() => removeItem('labs', lab.id)}
-                      />
+                      {canAddLab && (
+                        <>
+                          <ActionBtn icon={Pencil} title="Edit" />
+                          <ActionBtn
+                            icon={Trash2}
+                            title="Delete"
+                            danger
+                            onClick={() => removeItem('labs', lab.id)}
+                          />
+                        </>
+                      )}
                     </div>
                   </div>
                 ))
@@ -1157,13 +1189,15 @@ export default function PatientDetail() {
               }}
             >
               <div style={{ fontSize: 13, color: C.muted }}>Recorded vital signs over time</div>
-              <button
-                className="btn-primary"
-                style={{ fontSize: 13 }}
-                onClick={() => setVitalsModal(true)}
-              >
-                <Plus size={14} /> Record vitals
-              </button>
+              {canRecordVitals && (
+                <button
+                  className="btn-primary"
+                  style={{ fontSize: 13 }}
+                  onClick={() => setVitalsModal(true)}
+                >
+                  <Plus size={14} /> Record vitals
+                </button>
+              )}
             </div>
             {/* BP trend chart */}
             {patient.vitals.length > 0 && (
@@ -1355,13 +1389,17 @@ export default function PatientDetail() {
                     <div style={{ fontSize: 13, color: C.text }}>{v.spo2}%</div>
                     <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
                       <ActionBtn icon={Printer} title="Print" />
-                      <ActionBtn icon={Pencil} title="Edit" />
-                      <ActionBtn
-                        icon={Trash2}
-                        title="Delete"
-                        danger
-                        onClick={() => removeItem('vitals', v.id)}
-                      />
+                      {canRecordVitals && (
+                        <>
+                          <ActionBtn icon={Pencil} title="Edit" />
+                          <ActionBtn
+                            icon={Trash2}
+                            title="Delete"
+                            danger
+                            onClick={() => removeItem('vitals', v.id)}
+                          />
+                        </>
+                      )}
                     </div>
                   </div>
                 ))
@@ -1835,13 +1873,15 @@ export default function PatientDetail() {
                   All in-patient admissions for {patient.name}
                 </div>
               </div>
-              <button
-                className="btn-primary"
-                style={{ fontSize: 13 }}
-                onClick={() => setAdmissionModal(true)}
-              >
-                <Plus size={14} /> Admit patient
-              </button>
+              {canManageAdmissions && (
+                <button
+                  className="btn-primary"
+                  style={{ fontSize: 13 }}
+                  onClick={() => setAdmissionModal(true)}
+                >
+                  <Plus size={14} /> Admit patient
+                </button>
+              )}
             </div>
             {patient.admissions.length === 0 ? (
               <div

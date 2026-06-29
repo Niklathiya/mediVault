@@ -9,6 +9,7 @@ import {
 } from '../firebase/services/billingService.js';
 import { subscribePatients } from '../firebase/services/patientService.js';
 import { useLocation } from 'react-router-dom';
+import { useRBAC } from '../context/RBACContext';
 
 const BILL_TYPES = ['OPD', 'IPD', 'Lab', 'Pharmacy', 'Emergency'];
 
@@ -70,6 +71,7 @@ const labelStyle = {
 
 export default function Billing() {
   const location = useLocation();
+  const { canManageBilling } = useRBAC();
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(true);
   const [patients, setPatients] = useState([]);
@@ -433,9 +435,11 @@ export default function Billing() {
             }}
           />
         </div>
-        <button className="btn-primary" onClick={openNew}>
-          <Plus size={16} /> New bill
-        </button>
+        {canManageBilling && (
+          <button className="btn-primary" onClick={openNew}>
+            <Plus size={16} /> New bill
+          </button>
+        )}
       </div>
 
       {/* Bills table */}
@@ -528,27 +532,29 @@ export default function Billing() {
                 </span>
               </div>
               <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openEdit(b);
-                  }}
-                  title="Edit bill"
-                  style={{
-                    background: 'transparent',
-                    border: '1px solid rgba(15,23,42,0.10)',
-                    borderRadius: 6,
-                    cursor: 'pointer',
-                    color: 'var(--fg-on-light)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    fontSize: 12,
-                    fontFamily: 'inherit',
-                  }}
-                  className="w-8 h-8 flex items-center justify-center"
-                >
-                  <Pencil size={11} />
-                </button>
+                {canManageBilling && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEdit(b);
+                    }}
+                    title="Edit bill"
+                    style={{
+                      background: 'transparent',
+                      border: '1px solid rgba(15,23,42,0.10)',
+                      borderRadius: 6,
+                      cursor: 'pointer',
+                      color: 'var(--fg-on-light)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      fontSize: 12,
+                      fontFamily: 'inherit',
+                    }}
+                    className="w-8 h-8 flex items-center justify-center"
+                  >
+                    <Pencil size={11} />
+                  </button>
+                )}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();

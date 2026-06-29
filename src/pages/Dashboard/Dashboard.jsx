@@ -3,14 +3,16 @@ import PatientJourney from './components/PatientJourney';
 import KpiGrid from './components/KpiGrid';
 import IpdAtGlance from './components/IpdAtGlance';
 import RecentPatients from './components/RecentPatients';
+import { useRBAC } from '../../context/RBACContext';
 
 export default function Dashboard() {
+  const { canSeeDashboardIpd } = useRBAC();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <WelcomeSection />
       <PatientJourney />
       <KpiGrid />
-      <IpdAtGlance />
+      {canSeeDashboardIpd && <IpdAtGlance />}
       <RecentPatients />
     </div>
   );
