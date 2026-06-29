@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
+import { getAdmission, dischargeAdmission, updateAdmission } from '../firebase/services/admissionService.js';
 import {
   ArrowLeft, LayoutGrid, FileSignature, History, Siren, ClipboardList, NotebookPen,
   Pill, Syringe, Notebook, HandHelping, FlaskConical, Settings2, UsersRound,
@@ -8,284 +9,10 @@ import {
   Pencil, Trash2,
 } from 'lucide-react';
 
-const TODAY = '2026-06-28';
+const TODAY = new Date().toISOString().slice(0, 10);
 
-const ADMISSIONS = {
-  'IPD-2026-042': {
-    id: 'IPD-2026-042', ipNo: 'IP/2026/042', mrNo: 'PT-0128',
-    patientName: 'Kiran Desai', initials: 'KD', hasAllergy: false,
-    age: '34', sex: 'Male', blood: 'B+',
-    ward: 'General', bedNo: '4A',
-    admittedOn: '2026-06-23', admittedTime: '09:15 AM',
-    reason: 'Abdominal pain, fever',
-    provisionalDx: 'Acute Appendicitis',
-    diet: 'Nil by mouth',
-    esiLevel: '2', esiColor: 'Red',
-    allergies: '',
-    admittingDoctor: 'Dr. Priya Mehta',
-    status: 'admitted', dischargedOn: null,
-    triage: { bp: '128/84', pulse: '92', rr: '18', spo2: '98', rbs: '110', temp: '101.2' },
-    consent: true, pastHistory: true, triageDone: true, history: false, carePlan: false,
-    medications: 4, treatment: 6, clinical: 3, nursing: 5, investigations: 8, procedures: 5, visits: 6,
-    casefile: {
-      carePlan: {
-        systemicExam: { rs: 'NVBS, clear', cvs: 'S1 S2 normal, no murmur', pa: 'Soft, RIF tenderness, guarding+', cns: 'Conscious, oriented', gcs: '15/15', pupils: 'Equal, reacting', reflexes: 'Intact', loc: 'Alert' },
-        plan: { conservative: 'IV fluids, analgesics, antipyretics', operative: 'Laparoscopic appendectomy', surgery: '', other: '', investigationRadiology: 'USG Abdomen, CXR', investigationPathology: 'CBC, CRP, LFT, Urine R&M', investigationOther: '', referenceDoctor: 'Dr. Amit Sharma (Surgery)', diet: 'Nil by mouth', physiotherapy: 'Post-op breathing exercises', dischargeNeeds: 'OPD review in 7 days' },
-      },
-      medications: [
-        { sr: 1, drug: 'Ceftriaxone', dose: '1g', route: 'IV', frequency: 'BD', qty: 14 },
-        { sr: 2, drug: 'Metronidazole', dose: '500mg', route: 'IV', frequency: 'TDS', qty: 21 },
-        { sr: 3, drug: 'Paracetamol', dose: '1g', route: 'IV', frequency: 'SOS', qty: 6 },
-        { sr: 4, drug: 'Pantoprazole', dose: '40mg', route: 'IV', frequency: 'OD', qty: 7 },
-      ],
-      treatmentDates: ['2026-06-23','2026-06-24','2026-06-25','2026-06-26','2026-06-27','2026-06-28'],
-      treatmentList: [
-        { drug: 'Ceftriaxone 1g IV', dose: '1g', route: 'IV', freq: 'BD', cells: { '2026-06-23':'ON','2026-06-24':'ON','2026-06-25':'ON','2026-06-26':'ON','2026-06-27':'ON','2026-06-28':'ON' } },
-        { drug: 'Metronidazole 500mg IV', dose: '500mg', route: 'IV', freq: 'TDS', cells: { '2026-06-23':'ON','2026-06-24':'ON','2026-06-25':'ON','2026-06-26':'ON','2026-06-27':'ON','2026-06-28':'ON' } },
-        { drug: 'Paracetamol 1g IV', dose: '1g', route: 'IV', freq: 'SOS', cells: { '2026-06-23':'ON','2026-06-24':'ON','2026-06-25':'OFF','2026-06-26':'OFF','2026-06-27':'ON','2026-06-28':'OFF' } },
-        { drug: 'Pantoprazole 40mg IV', dose: '40mg', route: 'IV', freq: 'OD', cells: { '2026-06-23':'ON','2026-06-24':'ON','2026-06-25':'ON','2026-06-26':'ON','2026-06-27':'ON','2026-06-28':'ON' } },
-      ],
-      clinicalNotes: [
-        { id: 1, date: '2026-06-23', time: '10:30 AM', doctor: 'Dr. Priya Mehta', note: 'Patient admitted with acute onset abdominal pain, RIF tenderness and guarding. CBC: WBC 14,800. CRP elevated. USG confirms appendix inflammation. Surgical consult obtained. Plan: laparoscopic appendectomy.' },
-        { id: 2, date: '2026-06-24', time: '09:00 AM', doctor: 'Dr. Priya Mehta', note: 'Post-op day 1. Vitals stable — BP 120/78, Pulse 82, Temp 99°F. Wound site clean and dry. Pain controlled. Bowel sounds returning. Tolerating sips of water.' },
-        { id: 3, date: '2026-06-25', time: '08:45 AM', doctor: 'Dr. Priya Mehta', note: 'Improving satisfactorily. Tolerating oral fluids. IV antibiotics continued. Plan to start soft diet tomorrow. Catheter removal done.' },
-      ],
-      nursingNotes: [
-        { id: 1, dateTime: '23 Jun 2026 · 09:30 AM', note: 'Patient admitted, IV access established (18G, right forearm). Pre-operative preparations initiated.', sign: 'Nurse Asha Kumar' },
-        { id: 2, dateTime: '23 Jun 2026 · 02:00 PM', note: 'Patient returned from OT — laparoscopic appendectomy done. Vitals q30 min. Alert and stable.', sign: 'Nurse Preethi R.' },
-        { id: 3, dateTime: '24 Jun 2026 · 06:00 AM', note: 'Morning check — wound dressing changed. No ooze. Urinary output 800 mL/shift. IV site clean.', sign: 'Nurse Asha Kumar' },
-        { id: 4, dateTime: '24 Jun 2026 · 06:00 PM', note: 'Evening assessment — comfortable. Temp 98.6°F. Pain score 3/10. Ambulation encouraged.', sign: 'Nurse Preethi R.' },
-        { id: 5, dateTime: '25 Jun 2026 · 06:00 AM', note: 'Tolerating soft fluids. IV site healthy — no phlebitis. Patient in stable condition.', sign: 'Nurse Asha Kumar' },
-      ],
-      pathology: [
-        { date: '23 Jun 2026', time: '09:30 AM', investigation: 'Complete Blood Count (CBC)', sign: 'Lab Tech Suresh' },
-        { date: '23 Jun 2026', time: '09:30 AM', investigation: 'C-Reactive Protein (CRP)', sign: 'Lab Tech Suresh' },
-        { date: '23 Jun 2026', time: '09:30 AM', investigation: 'Liver Function Test (LFT)', sign: 'Lab Tech Suresh' },
-        { date: '24 Jun 2026', time: '07:00 AM', investigation: 'Repeat CBC & CRP', sign: 'Lab Tech Ravi' },
-        { date: '25 Jun 2026', time: '07:00 AM', investigation: 'Post-op CBC', sign: 'Lab Tech Ravi' },
-      ],
-      radiology: [
-        { date: '23 Jun 2026', time: '10:00 AM', investigation: 'USG Abdomen', portable: false, rtEr: false, plateNo: 'RD-23061', sign: 'Rad. Tech.' },
-        { date: '23 Jun 2026', time: '10:30 AM', investigation: 'Chest X-Ray (PA view)', portable: false, rtEr: false, plateNo: 'RD-23062', sign: 'Rad. Tech.' },
-        { date: '25 Jun 2026', time: '08:00 AM', investigation: 'Post-op CXR', portable: false, rtEr: false, plateNo: 'RD-25063', sign: 'Rad. Tech.' },
-      ],
-      cardiology: [
-        { date: '23 Jun 2026', time: '09:15 AM', investigation: 'ECG (12-lead)', doctor: 'Dr. Arjun Rao', sign: 'Dr. Arjun Rao' },
-      ],
-      equipment: [
-        { onDate: '23 Jun 2026', type: 'IV Cannula 18G', onTime: '09:30 AM', sign: 'Nurse Asha', offDate: null, offTime: null, offSign: '' },
-        { onDate: '23 Jun 2026', type: 'Urinary Catheter (F16)', onTime: '01:00 PM', sign: 'Nurse Asha', offDate: '25 Jun 2026', offTime: '08:00 AM', offSign: 'Nurse Preethi' },
-        { onDate: '23 Jun 2026', type: 'Pulse Oximeter', onTime: '09:15 AM', sign: 'Nurse Asha', offDate: '24 Jun 2026', offTime: '06:00 PM', offSign: 'Nurse Preethi' },
-      ],
-      dressing: [
-        { date: '24 Jun 2026', time: '06:00 AM', procedure: 'Wound dressing – umbilical port site', doctor: 'Dr. Priya Mehta', sign: 'Nurse Asha Kumar' },
-        { date: '25 Jun 2026', time: '06:30 AM', procedure: 'Wound dressing – RIF port site', doctor: 'Dr. Priya Mehta', sign: 'Nurse Preethi R.' },
-      ],
-      traction: [],
-      rounds: [
-        { date: '23 Jun 2026', first: true,  routine: false, daySpcl: false, nightSpcl: false, consultant: 'Dr. Priya Mehta',  signature: 'Dr. P. Mehta' },
-        { date: '24 Jun 2026', first: false, routine: true,  daySpcl: false, nightSpcl: false, consultant: 'Dr. Priya Mehta',  signature: 'Dr. P. Mehta' },
-        { date: '25 Jun 2026', first: false, routine: true,  daySpcl: false, nightSpcl: false, consultant: 'Dr. Priya Mehta',  signature: 'Dr. P. Mehta' },
-        { date: '26 Jun 2026', first: false, routine: false, daySpcl: true,  nightSpcl: false, consultant: 'Dr. Amit Sharma',  signature: 'Dr. A. Sharma' },
-        { date: '27 Jun 2026', first: false, routine: true,  daySpcl: false, nightSpcl: false, consultant: 'Dr. Priya Mehta',  signature: 'Dr. P. Mehta' },
-        { date: '28 Jun 2026', first: false, routine: true,  daySpcl: false, nightSpcl: false, consultant: 'Dr. Priya Mehta',  signature: 'Dr. P. Mehta' },
-      ],
-    },
-  },
-  'IPD-2026-041': {
-    id: 'IPD-2026-041', ipNo: 'IP/2026/041', mrNo: 'PT-0127',
-    patientName: 'Meena Agarwal', initials: 'MA', hasAllergy: true,
-    age: '52', sex: 'Female', blood: 'O+',
-    ward: 'ICU', bedNo: '2',
-    admittedOn: '2026-06-22', admittedTime: '02:30 PM',
-    reason: 'Myocardial Infarction',
-    provisionalDx: 'STEMI — anterior wall',
-    diet: 'Cardiac diet',
-    esiLevel: '1', esiColor: 'Red',
-    allergies: 'Penicillin, Aspirin',
-    admittingDoctor: 'Dr. Arjun Rao',
-    status: 'admitted', dischargedOn: null,
-    triage: { bp: '90/60', pulse: '110', rr: '22', spo2: '92', rbs: '180', temp: '99.4' },
-    consent: true, pastHistory: true, triageDone: true, history: true, carePlan: true,
-    medications: 8, treatment: 12, clinical: 6, nursing: 14, investigations: 9, procedures: 4, visits: 8,
-    casefile: {
-      carePlan: {
-        systemicExam: { rs: 'Bilateral crackles at bases', cvs: 'S1 S2 present, S3 gallop', pa: 'Soft, non-tender', cns: 'Drowsy but arousable', gcs: '13/15', pupils: 'Equal, reactive', reflexes: 'Normal', loc: 'Drowsy' },
-        plan: { conservative: 'O₂, IV heparin, antiplatelet therapy', operative: 'Coronary angiography + PTCA', surgery: '', other: 'Cardiac monitoring, ICU care', investigationRadiology: 'CXR, 2D Echo, PTCA', investigationPathology: 'Troponin, CPK-MB, CBC, LFT, ABG', investigationOther: '', referenceDoctor: 'Dr. Arjun Rao (Cardiology)', diet: 'Cardiac diet, fluid restriction', physiotherapy: 'Gradual ambulation post-stabilisation', dischargeNeeds: 'Cardiology OPD follow-up' },
-      },
-      medications: [
-        { sr: 1, drug: 'Aspirin', dose: '300mg', route: 'Oral', frequency: 'Stat then OD', qty: 30 },
-        { sr: 2, drug: 'Clopidogrel', dose: '75mg', route: 'Oral', frequency: 'OD', qty: 30 },
-        { sr: 3, drug: 'Enoxaparin', dose: '60mg', route: 'SC', frequency: 'BD', qty: 14 },
-        { sr: 4, drug: 'Atorvastatin', dose: '80mg', route: 'Oral', frequency: 'OD (night)', qty: 30 },
-        { sr: 5, drug: 'Metoprolol', dose: '25mg', route: 'Oral', frequency: 'BD', qty: 60 },
-        { sr: 6, drug: 'Ramipril', dose: '2.5mg', route: 'Oral', frequency: 'OD', qty: 30 },
-        { sr: 7, drug: 'Furosemide', dose: '40mg', route: 'IV', frequency: 'BD', qty: 14 },
-        { sr: 8, drug: 'Dobutamine', dose: '5 mcg/kg/min', route: 'IV infusion', frequency: 'Continuous', qty: 1 },
-      ],
-      treatmentDates: ['2026-06-22','2026-06-23','2026-06-24','2026-06-25','2026-06-26','2026-06-27','2026-06-28'],
-      treatmentList: [
-        { drug: 'Aspirin 300mg Oral', dose: '300mg', route: 'Oral', freq: 'OD', cells: { '2026-06-22':'ON','2026-06-23':'ON','2026-06-24':'ON','2026-06-25':'ON','2026-06-26':'ON','2026-06-27':'ON','2026-06-28':'ON' } },
-        { drug: 'Clopidogrel 75mg', dose: '75mg', route: 'Oral', freq: 'OD', cells: { '2026-06-22':'ON','2026-06-23':'ON','2026-06-24':'ON','2026-06-25':'ON','2026-06-26':'ON','2026-06-27':'ON','2026-06-28':'ON' } },
-        { drug: 'Enoxaparin 60mg SC', dose: '60mg', route: 'SC', freq: 'BD', cells: { '2026-06-22':'ON','2026-06-23':'ON','2026-06-24':'ON','2026-06-25':'ON','2026-06-26':'OFF','2026-06-27':'OFF','2026-06-28':'OFF' } },
-        { drug: 'Furosemide 40mg IV', dose: '40mg', route: 'IV', freq: 'BD', cells: { '2026-06-22':'ON','2026-06-23':'ON','2026-06-24':'ON','2026-06-25':'ON','2026-06-26':'ON','2026-06-27':'ON','2026-06-28':'ON' } },
-        { drug: 'Dobutamine infusion', dose: '5mcg/kg/min', route: 'IV', freq: 'Cont.', cells: { '2026-06-22':'ON','2026-06-23':'ON','2026-06-24':'OFF','2026-06-25':'OFF','2026-06-26':'OFF','2026-06-27':'OFF','2026-06-28':'OFF' } },
-      ],
-      clinicalNotes: [
-        { id: 1, date: '2026-06-22', time: '03:00 PM', doctor: 'Dr. Arjun Rao', note: 'Patient admitted in emergency with STEMI (anterior wall). ECG shows ST elevation V1–V4. Troponin markedly elevated. BP 90/60, HR 110. Oxygen, aspirin load, heparin started. PTCA arranged urgently.' },
-        { id: 2, date: '2026-06-23', time: '08:00 AM', doctor: 'Dr. Arjun Rao', note: 'Post-PTCA day 1. Haemodynamically stabilising. BP 100/70, HR 95. Echo: EF 35%, anterior wall hypokinesia. Dobutamine continued. Bilateral crackles — furosemide increased.' },
-        { id: 3, date: '2026-06-24', time: '09:00 AM', doctor: 'Dr. Arjun Rao', note: 'Improving. BP 110/72, HR 88. Crackles reduced. Dobutamine weaned off. Tolerating oral medications.' },
-        { id: 4, date: '2026-06-25', time: '08:30 AM', doctor: 'Dr. Arjun Rao', note: 'Stable. BP 118/75, HR 80. Ambulation started — 5m walk with assistance. Oral ramipril and metoprolol tolerated.' },
-        { id: 5, date: '2026-06-26', time: '09:00 AM', doctor: 'Dr. Arjun Rao', note: 'Continued recovery. Enoxaparin stopped. Patient educated on cardiac diet, medications, and activity restrictions.' },
-        { id: 6, date: '2026-06-27', time: '08:30 AM', doctor: 'Dr. Arjun Rao', note: 'Walking 20m independently. Discharge planning initiated. Allergy (Penicillin/Aspirin) documented.' },
-      ],
-      nursingNotes: [
-        { id: 1, dateTime: '22 Jun 2026 · 02:45 PM', note: 'Patient arrived via ambulance in distress. O₂ 6L/min started, IV access × 2. ECG done, cardiologist called.', sign: 'Nurse Kavitha S.' },
-        { id: 2, dateTime: '22 Jun 2026 · 08:00 PM', note: 'Post-PTCA — patient stable in ICU. Vitals q15 min. Urinary catheter inserted. Dobutamine drip running.', sign: 'Nurse Ramya P.' },
-        { id: 3, dateTime: '23 Jun 2026 · 06:00 AM', note: 'BP 100/70, HR 95, SpO₂ 93%. I/O monitored strictly. 600 mL urine output overnight.', sign: 'Nurse Kavitha S.' },
-        { id: 4, dateTime: '24 Jun 2026 · 06:00 AM', note: 'Dobutamine weaned per order. BP improving. Switched IV to oral meds. Patient alert and communicative.', sign: 'Nurse Ramya P.' },
-        { id: 5, dateTime: '25 Jun 2026 · 06:00 AM', note: 'Ambulation initiated — patient walked short distance. Tolerated well. Oral intake improved.', sign: 'Nurse Kavitha S.' },
-        { id: 6, dateTime: '26 Jun 2026 · 06:00 AM', note: 'Enoxaparin last dose given yesterday. Discharge paperwork being prepared.', sign: 'Nurse Ramya P.' },
-      ],
-      pathology: [
-        { date: '22 Jun 2026', time: '02:45 PM', investigation: 'Troponin I (high-sensitivity)', sign: 'Lab Tech Suresh' },
-        { date: '22 Jun 2026', time: '02:45 PM', investigation: 'CPK-MB isoenzyme', sign: 'Lab Tech Suresh' },
-        { date: '22 Jun 2026', time: '02:45 PM', investigation: 'CBC, LFT, RFT, Coagulation profile', sign: 'Lab Tech Suresh' },
-        { date: '23 Jun 2026', time: '06:00 AM', investigation: 'Repeat Troponin & CBC', sign: 'Lab Tech Ravi' },
-        { date: '24 Jun 2026', time: '06:00 AM', investigation: 'ABG (arterial blood gas)', sign: 'Lab Tech Ravi' },
-        { date: '25 Jun 2026', time: '07:00 AM', investigation: 'Lipid profile, BNP', sign: 'Lab Tech Ravi' },
-        { date: '26 Jun 2026', time: '07:00 AM', investigation: 'Renal function, electrolytes', sign: 'Lab Tech Suresh' },
-        { date: '27 Jun 2026', time: '07:00 AM', investigation: 'CBC, Coagulation profile', sign: 'Lab Tech Suresh' },
-        { date: '28 Jun 2026', time: '07:00 AM', investigation: 'Pre-discharge CBC & LFT', sign: 'Lab Tech Ravi' },
-      ],
-      radiology: [
-        { date: '22 Jun 2026', time: '03:00 PM', investigation: 'Chest X-Ray (portable)', portable: true, rtEr: true, plateNo: 'RD-22060', sign: 'Rad. Tech.' },
-        { date: '23 Jun 2026', time: '09:00 AM', investigation: '2D Echo (bedside)', portable: true, rtEr: false, plateNo: 'ECHO-041', sign: 'Dr. Arjun Rao' },
-        { date: '25 Jun 2026', time: '10:00 AM', investigation: 'Repeat CXR', portable: false, rtEr: false, plateNo: 'RD-25064', sign: 'Rad. Tech.' },
-      ],
-      cardiology: [
-        { date: '22 Jun 2026', time: '02:50 PM', investigation: 'ECG (12-lead) — STEMI confirmed', doctor: 'Dr. Arjun Rao', sign: 'Dr. Arjun Rao' },
-        { date: '23 Jun 2026', time: '08:00 AM', investigation: 'Post-PTCA ECG', doctor: 'Dr. Arjun Rao', sign: 'Dr. Arjun Rao' },
-        { date: '25 Jun 2026', time: '08:00 AM', investigation: 'Holter monitor (24 hr)', doctor: 'Dr. Arjun Rao', sign: 'Dr. Arjun Rao' },
-        { date: '27 Jun 2026', time: '08:00 AM', investigation: 'Stress Echo', doctor: 'Dr. Arjun Rao', sign: 'Dr. Arjun Rao' },
-      ],
-      equipment: [
-        { onDate: '22 Jun 2026', type: 'IV Cannula × 2 (16G)', onTime: '02:45 PM', sign: 'Nurse Kavitha', offDate: null, offTime: null, offSign: '' },
-        { onDate: '22 Jun 2026', type: 'Urinary Catheter (F14)', onTime: '08:00 PM', sign: 'Nurse Ramya', offDate: '25 Jun 2026', offTime: '09:00 AM', offSign: 'Nurse Kavitha' },
-        { onDate: '22 Jun 2026', type: 'Cardiac Monitor', onTime: '02:45 PM', sign: 'Nurse Kavitha', offDate: null, offTime: null, offSign: '' },
-        { onDate: '22 Jun 2026', type: 'Dobutamine Infusion Pump', onTime: '03:30 PM', sign: 'Nurse Ramya', offDate: '24 Jun 2026', offTime: '10:00 AM', offSign: 'Nurse Kavitha' },
-      ],
-      dressing: [
-        { date: '23 Jun 2026', time: '08:00 AM', procedure: 'Cath lab entry site dressing (femoral)', doctor: 'Dr. Arjun Rao', sign: 'Nurse Kavitha S.' },
-        { date: '25 Jun 2026', time: '08:00 AM', procedure: 'IV site re-dressing (bilateral forearms)', doctor: 'Dr. Arjun Rao', sign: 'Nurse Ramya P.' },
-      ],
-      traction: [],
-      rounds: [
-        { date: '22 Jun 2026', first: true,  routine: false, daySpcl: false, nightSpcl: false, consultant: 'Dr. Arjun Rao',   signature: 'Dr. A. Rao' },
-        { date: '23 Jun 2026', first: false, routine: true,  daySpcl: false, nightSpcl: false, consultant: 'Dr. Arjun Rao',   signature: 'Dr. A. Rao' },
-        { date: '24 Jun 2026', first: false, routine: true,  daySpcl: false, nightSpcl: false, consultant: 'Dr. Arjun Rao',   signature: 'Dr. A. Rao' },
-        { date: '25 Jun 2026', first: false, routine: false, daySpcl: true,  nightSpcl: false, consultant: 'Dr. Priya Mehta', signature: 'Dr. P. Mehta' },
-        { date: '26 Jun 2026', first: false, routine: true,  daySpcl: false, nightSpcl: false, consultant: 'Dr. Arjun Rao',   signature: 'Dr. A. Rao' },
-        { date: '27 Jun 2026', first: false, routine: true,  daySpcl: false, nightSpcl: false, consultant: 'Dr. Arjun Rao',   signature: 'Dr. A. Rao' },
-        { date: '28 Jun 2026', first: false, routine: true,  daySpcl: false, nightSpcl: false, consultant: 'Dr. Arjun Rao',   signature: 'Dr. A. Rao' },
-        { date: '28 Jun 2026', first: false, routine: false, daySpcl: false, nightSpcl: true,  consultant: 'Dr. Kavita Singh', signature: 'Dr. K. Singh' },
-      ],
-    },
-  },
-  'IPD-2026-037': {
-    id: 'IPD-2026-037', ipNo: 'IP/2026/037', mrNo: 'PT-0122',
-    patientName: 'Rekha Nair', initials: 'RN', hasAllergy: false,
-    age: '38', sex: 'Female', blood: 'A-',
-    ward: 'Ortho', bedNo: '2A',
-    admittedOn: '2026-06-16', admittedTime: '10:00 AM',
-    reason: 'Femur fracture, fall',
-    provisionalDx: 'Fracture right femur',
-    diet: 'Normal diet',
-    esiLevel: '3', esiColor: 'Yellow',
-    allergies: '',
-    admittingDoctor: 'Dr. Kavita Singh',
-    status: 'discharged', dischargedOn: '2026-06-26',
-    triage: { bp: '122/78', pulse: '88', rr: '16', spo2: '99', rbs: '95', temp: '98.6' },
-    consent: true, pastHistory: true, triageDone: true, history: true, carePlan: true,
-    medications: 6, treatment: 10, clinical: 5, nursing: 12, investigations: 4, procedures: 3, visits: 5,
-    casefile: {
-      carePlan: {
-        systemicExam: { rs: 'Clear, NVBS', cvs: 'S1 S2 normal', pa: 'Soft, non-tender', cns: 'Conscious, oriented', gcs: '15/15', pupils: 'Equal, reacting', reflexes: 'Intact, right knee reflex present', loc: 'Alert' },
-        plan: { conservative: 'Analgesics, skin traction initially', operative: 'ORIF right femur', surgery: 'Intramedullary nailing', other: '', investigationRadiology: 'X-ray femur AP & lateral, CXR', investigationPathology: 'CBC, PT/aPTT, LFT, Group & Cross-match', investigationOther: '', referenceDoctor: 'Dr. Kavita Singh (Ortho)', diet: 'High protein diet', physiotherapy: 'Bed exercises, gradual weight bearing', dischargeNeeds: 'Physio follow-up, crutch walking training' },
-      },
-      medications: [
-        { sr: 1, drug: 'Tramadol', dose: '50mg', route: 'IV', frequency: 'BD', qty: 14 },
-        { sr: 2, drug: 'Cefazolin', dose: '1g', route: 'IV', frequency: 'TDS', qty: 21 },
-        { sr: 3, drug: 'Enoxaparin', dose: '40mg', route: 'SC', frequency: 'OD', qty: 10 },
-        { sr: 4, drug: 'Calcium + Vit D3', dose: '500mg/400IU', route: 'Oral', frequency: 'BD', qty: 20 },
-        { sr: 5, drug: 'Pantoprazole', dose: '40mg', route: 'IV', frequency: 'OD', qty: 10 },
-        { sr: 6, drug: 'Ondansetron', dose: '4mg', route: 'IV', frequency: 'SOS', qty: 5 },
-      ],
-      treatmentDates: ['2026-06-16','2026-06-17','2026-06-18','2026-06-19','2026-06-20','2026-06-21','2026-06-22','2026-06-23','2026-06-24','2026-06-25'],
-      treatmentList: [
-        { drug: 'Tramadol 50mg IV', dose: '50mg', route: 'IV', freq: 'BD', cells: { '2026-06-16':'ON','2026-06-17':'ON','2026-06-18':'ON','2026-06-19':'ON','2026-06-20':'ON','2026-06-21':'ON','2026-06-22':'OFF','2026-06-23':'OFF','2026-06-24':'OFF','2026-06-25':'OFF' } },
-        { drug: 'Cefazolin 1g IV', dose: '1g', route: 'IV', freq: 'TDS', cells: { '2026-06-16':'ON','2026-06-17':'ON','2026-06-18':'ON','2026-06-19':'ON','2026-06-20':'OFF','2026-06-21':'OFF','2026-06-22':'OFF','2026-06-23':'OFF','2026-06-24':'OFF','2026-06-25':'OFF' } },
-        { drug: 'Enoxaparin 40mg SC', dose: '40mg', route: 'SC', freq: 'OD', cells: { '2026-06-16':'ON','2026-06-17':'ON','2026-06-18':'ON','2026-06-19':'ON','2026-06-20':'ON','2026-06-21':'ON','2026-06-22':'ON','2026-06-23':'ON','2026-06-24':'ON','2026-06-25':'ON' } },
-        { drug: 'Calcium + Vit D3', dose: '500mg', route: 'Oral', freq: 'BD', cells: { '2026-06-16':'OFF','2026-06-17':'ON','2026-06-18':'ON','2026-06-19':'ON','2026-06-20':'ON','2026-06-21':'ON','2026-06-22':'ON','2026-06-23':'ON','2026-06-24':'ON','2026-06-25':'ON' } },
-      ],
-      clinicalNotes: [
-        { id: 1, date: '2026-06-16', time: '11:30 AM', doctor: 'Dr. Kavita Singh', note: 'Patient with right femur fracture (fall). X-ray confirms mid-shaft fracture. Neurovascular status intact. Skin traction applied. Surgery planned after pre-op workup.' },
-        { id: 2, date: '2026-06-17', time: '09:00 AM', doctor: 'Dr. Kavita Singh', note: 'Pre-op assessment complete. CBC, coagulation normal. Anaesthesia fitness obtained. Informed consent done for ORIF. Scheduled for OT tomorrow.' },
-        { id: 3, date: '2026-06-18', time: '04:00 PM', doctor: 'Dr. Kavita Singh', note: 'Post-ORIF day 0. Intramedullary nail inserted under spinal anaesthesia. NV status intact post-op. IV antibiotics started. Wound closed in layers.' },
-        { id: 4, date: '2026-06-20', time: '08:30 AM', doctor: 'Dr. Kavita Singh', note: 'Post-op day 2. Wound healing well. Drain removed. Bed exercises started — static quads, ankle pumps. Oral analgesics commenced.' },
-        { id: 5, date: '2026-06-24', time: '09:00 AM', doctor: 'Dr. Kavita Singh', note: 'Walking with walker — weight bearing tolerated. X-ray satisfactory. Discharge planned for 26 Jun. Physiotherapy referral given.' },
-      ],
-      nursingNotes: [
-        { id: 1, dateTime: '16 Jun 2026 · 10:30 AM', note: 'Patient admitted from casualty. Right leg immobilised, skin traction applied. IV access established, analgesics given.', sign: 'Nurse Geeta M.' },
-        { id: 2, dateTime: '18 Jun 2026 · 04:30 PM', note: 'Patient returned from OT post-ORIF. Wound dressing intact, drain in-situ, IV antibiotics running.', sign: 'Nurse Geeta M.' },
-        { id: 3, dateTime: '19 Jun 2026 · 06:00 AM', note: 'Drain output 80 mL. Wound dry. Patient comfortable on analgesics. IV site healthy.', sign: 'Nurse Geeta M.' },
-        { id: 4, dateTime: '20 Jun 2026 · 06:00 AM', note: 'Drain removed per surgeon order. Physiotherapy started — patient cooperative and motivated.', sign: 'Nurse Geeta M.' },
-        { id: 5, dateTime: '23 Jun 2026 · 06:00 AM', note: 'Patient walking short distances with walker. Wound healing well, no infection signs.', sign: 'Nurse Geeta M.' },
-        { id: 6, dateTime: '25 Jun 2026 · 09:00 AM', note: 'Discharge preparations completed. Wound dressing changed. Patient and family counselled on home exercises.', sign: 'Nurse Geeta M.' },
-      ],
-      pathology: [
-        { date: '16 Jun 2026', time: '11:00 AM', investigation: 'CBC, LFT, RFT', sign: 'Lab Tech Suresh' },
-        { date: '16 Jun 2026', time: '11:00 AM', investigation: 'PT/aPTT, Blood Group & Cross-match', sign: 'Lab Tech Suresh' },
-        { date: '18 Jun 2026', time: '06:00 AM', investigation: 'Pre-op CBC', sign: 'Lab Tech Ravi' },
-        { date: '19 Jun 2026', time: '07:00 AM', investigation: 'Post-op CBC', sign: 'Lab Tech Ravi' },
-      ],
-      radiology: [
-        { date: '16 Jun 2026', time: '11:30 AM', investigation: 'X-Ray Right Femur (AP + Lateral)', portable: false, rtEr: false, plateNo: 'RD-16055', sign: 'Rad. Tech.' },
-        { date: '16 Jun 2026', time: '11:45 AM', investigation: 'Chest X-Ray (PA view)', portable: false, rtEr: false, plateNo: 'RD-16056', sign: 'Rad. Tech.' },
-        { date: '19 Jun 2026', time: '08:00 AM', investigation: 'Post-ORIF X-Ray Right Femur', portable: false, rtEr: false, plateNo: 'RD-19057', sign: 'Rad. Tech.' },
-        { date: '24 Jun 2026', time: '09:00 AM', investigation: 'Follow-up X-Ray Right Femur', portable: false, rtEr: false, plateNo: 'RD-24058', sign: 'Rad. Tech.' },
-      ],
-      cardiology: [
-        { date: '16 Jun 2026', time: '11:00 AM', investigation: 'ECG (pre-op screening)', doctor: 'Dr. Arjun Rao', sign: 'Dr. Arjun Rao' },
-      ],
-      equipment: [
-        { onDate: '16 Jun 2026', type: 'Skin Traction (right leg, 3kg)', onTime: '11:00 AM', sign: 'Nurse Geeta', offDate: '18 Jun 2026', offTime: '12:00 PM', offSign: 'Nurse Geeta' },
-        { onDate: '16 Jun 2026', type: 'IV Cannula 18G', onTime: '10:30 AM', sign: 'Nurse Geeta', offDate: '20 Jun 2026', offTime: '10:00 AM', offSign: 'Nurse Geeta' },
-        { onDate: '18 Jun 2026', type: 'Wound Drain (Romovac)', onTime: '04:30 PM', sign: 'Nurse Geeta', offDate: '20 Jun 2026', offTime: '06:00 AM', offSign: 'Nurse Geeta' },
-      ],
-      dressing: [
-        { date: '19 Jun 2026', time: '07:00 AM', procedure: 'Post-ORIF wound dressing', doctor: 'Dr. Kavita Singh', sign: 'Nurse Geeta M.' },
-        { date: '21 Jun 2026', time: '07:00 AM', procedure: 'Wound inspection & redressing', doctor: 'Dr. Kavita Singh', sign: 'Nurse Geeta M.' },
-        { date: '24 Jun 2026', time: '07:00 AM', procedure: 'Pre-discharge wound dressing', doctor: 'Dr. Kavita Singh', sign: 'Nurse Geeta M.' },
-      ],
-      traction: [
-        { startDate: '16 Jun 2026', startTime: '11:00 AM', procedure: 'Skin traction – right femur (3kg weight)', endDate: '18 Jun 2026', endTime: '12:00 PM', sign: 'Nurse Geeta M.' },
-      ],
-      rounds: [
-        { date: '16 Jun 2026', first: true,  routine: false, daySpcl: false, nightSpcl: false, consultant: 'Dr. Kavita Singh', signature: 'Dr. K. Singh' },
-        { date: '17 Jun 2026', first: false, routine: true,  daySpcl: false, nightSpcl: false, consultant: 'Dr. Kavita Singh', signature: 'Dr. K. Singh' },
-        { date: '18 Jun 2026', first: false, routine: false, daySpcl: true,  nightSpcl: false, consultant: 'Dr. Kavita Singh', signature: 'Dr. K. Singh' },
-        { date: '19 Jun 2026', first: false, routine: true,  daySpcl: false, nightSpcl: false, consultant: 'Dr. Kavita Singh', signature: 'Dr. K. Singh' },
-        { date: '20 Jun 2026', first: false, routine: true,  daySpcl: false, nightSpcl: false, consultant: 'Dr. Kavita Singh', signature: 'Dr. K. Singh' },
-        { date: '21 Jun 2026', first: false, routine: true,  daySpcl: false, nightSpcl: false, consultant: 'Dr. Kavita Singh', signature: 'Dr. K. Singh' },
-        { date: '22 Jun 2026', first: false, routine: true,  daySpcl: false, nightSpcl: false, consultant: 'Dr. Kavita Singh', signature: 'Dr. K. Singh' },
-        { date: '23 Jun 2026', first: false, routine: true,  daySpcl: false, nightSpcl: false, consultant: 'Dr. Kavita Singh', signature: 'Dr. K. Singh' },
-        { date: '24 Jun 2026', first: false, routine: false, daySpcl: true,  nightSpcl: false, consultant: 'Dr. Arjun Rao',   signature: 'Dr. A. Rao' },
-        { date: '25 Jun 2026', first: false, routine: true,  daySpcl: false, nightSpcl: false, consultant: 'Dr. Kavita Singh', signature: 'Dr. K. Singh' },
-      ],
-    },
-  },
-};
+
+
 
 const fmtDate = (iso) => {
   if (!iso) return '—';
@@ -564,13 +291,26 @@ export default function AdmissionDetail() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab]   = useState('overview');
   const [showDS, setShowDS]         = useState(false);
-  const [discharged, setDischarged] = useState(null);
   const [invSubTab, setInvSubTab]   = useState('pathology');
   const [procSubTab, setProcSubTab] = useState('equipment');
   const [treatView, setTreatView]   = useState('list');
+  const [adm, setAdm]               = useState(null);
+  const [loading, setLoading]       = useState(true);
 
-  const base = ADMISSIONS[id] || ADMISSIONS['IPD-2026-042'];
-  const adm  = { ...base, status: discharged !== null ? (discharged ? 'discharged' : 'admitted') : base.status };
+  useEffect(() => {
+    setLoading(true);
+    getAdmission(id).then((data) => {
+      setAdm(data);
+      setLoading(false);
+    });
+  }, [id]);
+
+  if (loading || !adm) return (
+    <div style={{ padding: 60, textAlign: 'center', color: 'var(--fg-on-light-muted)', fontSize: 14 }}>
+      {loading ? 'Loading admission…' : 'Admission not found.'}
+    </div>
+  );
+
   const days = daysCount(adm.admittedOn, adm.dischargedOn);
   const cf   = adm.casefile || {};
 
@@ -659,7 +399,18 @@ export default function AdmissionDetail() {
             <Printer size={13} /> Print
           </button>
           <button
-            onClick={() => setDischarged(isAdmitted ? true : false)}
+            onClick={() => {
+              const now = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+              if (isAdmitted) {
+                dischargeAdmission(id, TODAY, now).then(() =>
+                  setAdm((prev) => ({ ...prev, status: 'discharged', dischargedOn: TODAY, dischargedTime: now }))
+                );
+              } else {
+                updateAdmission(id, { status: 'admitted', dischargedOn: null, dischargedTime: null }).then(() =>
+                  setAdm((prev) => ({ ...prev, status: 'admitted', dischargedOn: null, dischargedTime: null }))
+                );
+              }
+            }}
             style={{ background: isAdmitted ? '#d95050' : '#15803d', color: 'white', border: 'none', padding: '8px 12px', borderRadius: 8, fontFamily: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5 }}
           >
             {isAdmitted ? <><LogOut size={13} /> Mark Discharged</> : <><LogIn size={13} /> Re-admit</>}
@@ -735,10 +486,10 @@ export default function AdmissionDetail() {
                       ['Allergies',     adm.allergies || 'No known allergies'],
                       ['Days admitted', `${days} day${days !== 1 ? 's' : ''}`],
                     ].map(([k, v]) => (
-                      <>
-                        <div key={k + '_k'} style={{ color: C.muted, fontSize: 12 }}>{k}</div>
-                        <div key={k + '_v'} style={{ color: k === 'Allergies' && adm.allergies ? '#a13030' : C.text }}>{v}</div>
-                      </>
+                      <React.Fragment key={k}>
+                        <div style={{ color: C.muted, fontSize: 12 }}>{k}</div>
+                        <div style={{ color: k === 'Allergies' && adm.allergies ? '#a13030' : C.text }}>{v}</div>
+                      </React.Fragment>
                     ))}
                   </div>
                 </div>
@@ -806,10 +557,10 @@ export default function AdmissionDetail() {
                   ['Consent given by', adm.patientName], ['Ward selected', adm.ward],
                   ['Signed on', fmtDate(adm.admittedOn)], ['Witnessend by', adm.admittingDoctor],
                 ].map(([k, v]) => (
-                  <>
-                    <div key={k+'_k'} style={{ color: C.muted, fontSize: 12 }}>{k}</div>
-                    <div key={k+'_v'}>{v}</div>
-                  </>
+                  <React.Fragment key={k}>
+                    <div style={{ color: C.muted, fontSize: 12 }}>{k}</div>
+                    <div>{v}</div>
+                  </React.Fragment>
                 ))}
               </div>
               <div style={{ marginTop: 18, paddingTop: 18, borderTop: `1px solid ${C.border}` }}>

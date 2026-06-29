@@ -1,0 +1,127 @@
+import { useState } from 'react';
+import { createPortal } from 'react-dom';
+import { X, FolderPlus } from 'lucide-react';
+import { addPatientSubItem } from '../../firebase/services/patientService.js';
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const TODAY  = new Date().toISOString().slice(0, 10);
+
+function isoToDisplay(iso) {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-');
+  return `${+d} ${MONTHS[+m - 1]} ${y}`;
+}
+
+const DOC_TYPES = [
+  'Lab Report', 'X-ray', 'MRI', 'CT Scan', 'Ultrasound',
+  'Discharge Summary', 'Consent Form', 'Insurance', 'Other',
+];
+
+const empty = { name: '', type: 'Lab Report', date: TODAY, notes: '' };
+
+const inp = {
+  width: '100%', padding: '10px 12px',
+  border: '1px solid var(--border-strong)', borderRadius: 6,
+  fontFamily: 'inherit', fontSize: 14, outline: 'none',
+  background: 'var(--bg-canvas)', color: 'var(--fg-on-light)', boxSizing: 'border-box',
+};
+const lbl = {
+  display: 'block', fontSize: 11, fontWeight: 600,
+  textTransform: 'uppercase', letterSpacing: '0.06em',
+  color: 'var(--fg-on-light-muted)', marginBottom: 4,
+};
+
+export default function AddDocumentModal({ open, patientId, onAdd, onClose }) {
+  const [form, setForm]     = useState(empty);
+  const [saving, setSaving] = useState(false);
+  const [done, setDone]     = useState(false);
+
+  if (!open) return null;
+
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.name.trim()) return;
+    setSaving(true);
+    try {
+      const data = {
+        name:  form.name,
+        type:  form.type,
+        date:  isoToDisplay(form.date),
+        notes: form.notes,
+      };
+      const ref = await addPatientSubItem(patientId, 'documents', data);
+      onAdd({ id: ref.id, ...data });
+      setDone(true);
+      setTimeout(() => { setDone(false); setForm(empty); onClose(); }, 1000);
+    } catch (err) {
+      console.error(err);
+      setSaving(false);
+    }
+  };
+
+  return createPortal(
+    <div className="modal-backdrop" onClick={onClose} style={{ alignItems: 'flex-start', paddingTop: 40 }}>
+      <div
+        className="modal-panel"
+        style={{ maxWidth: 480, width: '100%', background: 'var(--surface)', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 24px', borderBottom: '1px solid var(--border-card)' }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <div style={{ width: 34, height: 34, borderRadius: 8, background: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <FolderPlus size={16} color="white" />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--fg-on-light)' }}>Add Document</div>
+              <div style={{ fontSize: 12, color: 'var(--fg-on-light-muted)' }}>Attach a report or clinical document</div>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border-ui)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <label>
+            <span style={lbl}>Document Name *</span>
+            <input required style={inp} placeholder="e.g. Echocardiography Report" value={form.name} onChange={(e) => set('name', e.target.value)} />
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <label>
+              <span style={lbl}>Type</span>
+              <select style={inp} value={form.type} onChange={(e) => set('type', e.target.value)}>
+                {DOC_TYPES.map((t) => <option key={t}>{t}</option>)}
+              </select>
+            </label>
+            <label>
+              <span style={lbl}>Date</span>
+              <input type="date" style={inp} value={form.date} onChange={(e) => set('date', e.target.value)} />
+            </label>
+          </div>
+          <label>
+            <span style={lbl}>Notes</span>
+            <textarea
+              style={{ ...inp, resize: 'vertical', minHeight: 88 }}
+              placeholder="Brief description or remarks…"
+              value={form.notes}
+              onChange={(e) => set('notes', e.target.value)}
+            />
+          </label>
+        </form>
+
+        {/* Footer */}
+        <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border-card)', display: 'flex', justifyContent: 'flex-end', gap: 10, background: 'var(--surface-subtle)', flexShrink: 0 }}>
+          <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
+          <button type="submit" onClick={handleSubmit} className="btn-primary" disabled={saving || done}>
+            {done ? 'Saved!' : saving ? 'Saving…' : 'Save Document'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}

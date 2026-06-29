@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Building2,
   BedDouble,
@@ -11,6 +11,7 @@ import {
   FileText,
   FileSpreadsheet,
 } from 'lucide-react';
+import { getHospitalProfile, updateHospitalProfile, getWards, updateWards } from '../firebase/services/settingsService.js';
 
 const INITIAL_WARDS = [
   { name: 'General Ward', beds: 20 },
@@ -105,16 +106,25 @@ function SavedToast({ show }) {
 
 export default function Settings() {
   const [profile, setProfile] = useState({
-    name: 'BAPS Pramukh Swami Hospital',
-    tagline: 'Arogyam Sarvada',
-    address: 'Shahibaug, Ahmedabad, Gujarat 380004',
-    phone: '+91 79 2286 0000',
-    email: 'contact@bapshospital.org',
+    name: '', tagline: '', address: '', phone: '', email: '',
   });
   const [wards, setWards] = useState(INITIAL_WARDS);
   const [saved, setSaved] = useState(false);
+  const [settingsLoading, setSettingsLoading] = useState(true);
 
-  const showSaved = () => {
+  useEffect(() => {
+    Promise.all([getHospitalProfile(), getWards()]).then(([p, w]) => {
+      if (p) setProfile(p);
+      if (w && w.length) setWards(w);
+      setSettingsLoading(false);
+    });
+  }, []);
+
+  const showSaved = async () => {
+    await Promise.all([
+      updateHospitalProfile(profile),
+      updateWards(wards),
+    ]);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };

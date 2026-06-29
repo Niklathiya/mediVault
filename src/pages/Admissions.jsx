@@ -1,82 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { Plus, BedDouble, LogOut, LogIn, Trash2, AlertTriangle } from 'lucide-react';
 import CustomSelect from '../components/ui/CustomSelect';
+import { subscribeAdmissions, dischargeAdmission, updateAdmission } from '../firebase/services/admissionService.js';
+import { doc, deleteDoc } from 'firebase/firestore';
+import { db } from '../firebase/firebase.js';
 
-const TODAY = '2026-06-28';
-
-const INIT_ADMISSIONS = [
-  {
-    id: 'IPD-2026-042', ipNo: 'IP/2026/042', mrNo: 'PT-0128',
-    patientName: 'Kiran Desai', initials: 'KD', hasAllergy: false,
-    age: '34', sex: 'Male', blood: 'B+',
-    ward: 'General', bedNo: '4A',
-    admittedOn: '2026-06-23', admittedTime: '09:15 AM',
-    reason: 'Abdominal pain, fever',
-    admittingDoctor: 'Dr. Priya Mehta',
-    status: 'admitted', dischargedOn: null, dischargedTime: null,
-  },
-  {
-    id: 'IPD-2026-041', ipNo: 'IP/2026/041', mrNo: 'PT-0127',
-    patientName: 'Meena Agarwal', initials: 'MA', hasAllergy: true,
-    age: '52', sex: 'Female', blood: 'O+',
-    ward: 'ICU', bedNo: '2',
-    admittedOn: '2026-06-22', admittedTime: '02:30 PM',
-    reason: 'Myocardial Infarction',
-    admittingDoctor: 'Dr. Arjun Rao',
-    status: 'admitted', dischargedOn: null, dischargedTime: null,
-  },
-  {
-    id: 'IPD-2026-040', ipNo: 'IP/2026/040', mrNo: 'PT-0124',
-    patientName: 'Ankit Mehta', initials: 'AM', hasAllergy: false,
-    age: '28', sex: 'Male', blood: 'A+',
-    ward: 'Surgery', bedNo: '7B',
-    admittedOn: '2026-06-21', admittedTime: '11:00 AM',
-    reason: 'Hernia Repair (elective)',
-    admittingDoctor: 'Dr. Priya Mehta',
-    status: 'admitted', dischargedOn: null, dischargedTime: null,
-  },
-  {
-    id: 'IPD-2026-039', ipNo: 'IP/2026/039', mrNo: 'PT-0125',
-    patientName: 'Priya Joshi', initials: 'PJ', hasAllergy: true,
-    age: '28', sex: 'Female', blood: 'AB-',
-    ward: 'Maternity', bedNo: '3',
-    admittedOn: '2026-06-28', admittedTime: '06:45 AM',
-    reason: 'Normal delivery / labour',
-    admittingDoctor: 'Dr. Kavita Singh',
-    status: 'admitted', dischargedOn: null, dischargedTime: null,
-  },
-  {
-    id: 'IPD-2026-038', ipNo: 'IP/2026/038', mrNo: 'PT-0123',
-    patientName: 'Vijay Kumar', initials: 'VK', hasAllergy: false,
-    age: '45', sex: 'Male', blood: 'O-',
-    ward: 'General', bedNo: '6C',
-    admittedOn: '2026-06-19', admittedTime: '08:20 AM',
-    reason: 'Dengue fever, thrombocytopenia',
-    admittingDoctor: 'Dr. Arjun Rao',
-    status: 'admitted', dischargedOn: null, dischargedTime: null,
-  },
-  {
-    id: 'IPD-2026-037', ipNo: 'IP/2026/037', mrNo: 'PT-0122',
-    patientName: 'Rekha Nair', initials: 'RN', hasAllergy: false,
-    age: '38', sex: 'Female', blood: 'A-',
-    ward: 'Ortho', bedNo: '2A',
-    admittedOn: '2026-06-16', admittedTime: '10:00 AM',
-    reason: 'Femur fracture, fall',
-    admittingDoctor: 'Dr. Kavita Singh',
-    status: 'discharged', dischargedOn: '2026-06-26', dischargedTime: '11:30 AM',
-  },
-  {
-    id: 'IPD-2026-036', ipNo: 'IP/2026/036', mrNo: 'PT-0121',
-    patientName: 'Santosh Gupta', initials: 'SG', hasAllergy: true,
-    age: '55', sex: 'Male', blood: 'B-',
-    ward: 'General', bedNo: '1B',
-    admittedOn: '2026-06-14', admittedTime: '03:15 PM',
-    reason: 'Typhoid fever',
-    admittingDoctor: 'Dr. Priya Mehta',
-    status: 'discharged', dischargedOn: '2026-06-27', dischargedTime: '09:00 AM',
-  },
-];
+const TODAY = new Date().toISOString().slice(0, 10);
 
 const STATUS_BADGE = {
   admitted:   { label: 'Admitted',   color: '#0891b2', bg: 'rgba(8,145,178,0.10)' },
@@ -112,9 +42,18 @@ export default function Admissions() {
   const navigate = useNavigate();
   const { openNewAdmissionModal } = useOutletContext();
 
-  const [admissions, setAdmissions] = useState(INIT_ADMISSIONS);
+  const [admissions, setAdmissions] = useState([]);
+  const [loading, setLoading]       = useState(true);
   const [statusFilter, setStatusFilter] = useState('admitted');
   const [wardFilter, setWardFilter] = useState('all');
+
+  useEffect(() => {
+    const unsub = subscribeAdmissions(
+      (data) => { setAdmissions(data); setLoading(false); },
+      (err)  => { console.error('admissions subscription error:', err); setLoading(false); },
+    );
+    return unsub;
+  }, []);
 
   const wards = [...new Set(admissions.map((a) => a.ward))].sort();
 
@@ -130,20 +69,27 @@ export default function Admissions() {
 
   const toggleDischarge = (id, e) => {
     e.stopPropagation();
-    setAdmissions((prev) => prev.map((a) => {
-      if (a.id !== id) return a;
-      return a.status === 'admitted'
-        ? { ...a, status: 'discharged', dischargedOn: TODAY, dischargedTime: '—' }
-        : { ...a, status: 'admitted', dischargedOn: null, dischargedTime: null };
-    }));
+    const a = admissions.find((x) => x.id === id);
+    if (!a) return;
+    if (a.status === 'admitted') {
+      dischargeAdmission(id, TODAY, new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }));
+    } else {
+      updateAdmission(id, { status: 'admitted', dischargedOn: null, dischargedTime: null });
+    }
   };
 
   const deleteAdmission = (id, e) => {
     e.stopPropagation();
     if (window.confirm('Delete this admission record?')) {
-      setAdmissions((prev) => prev.filter((a) => a.id !== id));
+      deleteDoc(doc(db, 'admissions', id));
     }
   };
+
+  if (loading) return (
+    <div style={{ padding: 60, textAlign: 'center', color: 'var(--fg-on-light-muted)', fontSize: 14 }}>
+      Loading admissions…
+    </div>
+  );
 
   return (
     <div style={{ animation: 'mv-fade 200ms ease both' }}>

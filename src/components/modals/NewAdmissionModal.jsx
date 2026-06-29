@@ -1,25 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, BedDouble, CheckCircle2 } from 'lucide-react';
 import CustomSelect from '../ui/CustomSelect';
+import { subscribePatients } from '../../firebase/services/patientService.js';
+import { subscribeStaffByRole } from '../../firebase/services/staffService.js';
+import { addAdmission } from '../../firebase/services/admissionService.js';
 
-const PATIENTS = [
-  'Kiran Desai (PT-0128)',
-  'Meena Agarwal (PT-0127)',
-  'Suresh Rao (PT-0126)',
-  'Anjali Shah (PT-0125)',
-  'Mohan Trivedi (PT-0124)',
-  'Lakshmi Nair (PT-0123)',
-];
 const WARDS = ['General Ward', 'ICU', 'Surgery', 'Maternity', 'Orthopaedic', 'Paediatric'];
-const DOCTORS = [
-  'Dr. Priya Mehta',
-  'Dr. Arjun Rao',
-  'Dr. Kavita Singh',
-  'Dr. Rishi Patel',
-  'Dr. Anil Sharma',
-];
 
-const empty = { patient: '', ward: 'General Ward', bed: '', doctor: '', reason: '', notes: '' };
+const empty = { patientId: '', ward: 'General Ward', bed: '', doctor: '', reason: '', notes: '' };
 
 const inp = {
   width: '100%',
@@ -47,23 +35,61 @@ export default function NewAdmissionModal({ open, onClose }) {
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
+  const [patients, setPatients] = useState([]);
+  const [doctors, setDoctors] = useState([]);
+
+  useEffect(() => {
+    if (!open) return;
+    const unsubP = subscribePatients((data) => setPatients(data), console.error);
+    const unsubD = subscribeStaffByRole('doctors', (data) => setDoctors(data), console.error);
+    return () => { unsubP(); unsubD(); };
+  }, [open]);
 
   if (!open) return null;
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    const pt = patients.find((p) => p.id === form.patientId);
+    if (!pt) return;
     setSaving(true);
-    setTimeout(() => {
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const time  = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+      const words = (pt.name || '').trim().split(' ').filter(Boolean);
+      const initials = words.map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+      const allergyStr = Array.isArray(pt.allergies) ? pt.allergies.join(', ') : (pt.allergies || '');
+      await addAdmission({
+        mrNo:            pt.id,
+        patientName:     pt.name,
+        initials,
+        age:             pt.age,
+        sex:             pt.sex,
+        blood:           pt.blood,
+        hasAllergy:      !!pt.hasAllergy,
+        allergies:       allergyStr,
+        ward:            form.ward,
+        bedNo:           form.bed,
+        admittingDoctor: form.doctor,
+        reason:          form.reason,
+        provisionalDx:   '',
+        diet:            'Normal diet',
+        esiLevel:        '3',
+        esiColor:        'Yellow',
+        admittedOn:      today,
+        admittedTime:    time,
+        triage:          { bp: '', pulse: '', rr: '', spo2: '', rbs: '', temp: '' },
+        consent: false, pastHistory: false, triageDone: false, history: false, carePlan: false,
+        medications: 0, treatment: 0, clinical: 0, nursing: 0, investigations: 0, procedures: 0, visits: 0,
+      });
       setSaving(false);
       setDone(true);
-      setTimeout(() => {
-        setDone(false);
-        setForm(empty);
-        onClose();
-      }, 1200);
-    }, 700);
+      setTimeout(() => { setDone(false); setForm(empty); onClose(); }, 1200);
+    } catch (err) {
+      console.error('Failed to create admission:', err);
+      setSaving(false);
+    }
   };
 
   return (
@@ -140,13 +166,13 @@ export default function NewAdmissionModal({ open, onClose }) {
             <CustomSelect
               style={inp}
               required
-              value={form.patient}
-              onChange={(e) => set('patient', e.target.value)}
+              value={form.patientId}
+              onChange={(e) => set('patientId', e.target.value)}
             >
               <option value="">Select patient…</option>
-              {PATIENTS.map((p) => (
-                <option key={p} value={p}>
-                  {p}
+              {patients.filter((p) => p.status !== 'archived').map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.id})
                 </option>
               ))}
             </CustomSelect>
@@ -184,8 +210,8 @@ export default function NewAdmissionModal({ open, onClose }) {
               onChange={(e) => set('doctor', e.target.value)}
             >
               <option value="">Select doctor…</option>
-              {DOCTORS.map((d) => (
-                <option key={d}>{d}</option>
+              {doctors.map((d) => (
+                <option key={d.id} value={d.name}>{d.name}</option>
               ))}
             </CustomSelect>
           </label>

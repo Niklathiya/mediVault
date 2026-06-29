@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 import AdminLayout from '../layouts/AdminLayout';
+import SeedRunner from '../pages/SeedRunner';
 import Dashboard from '../pages/Dashboard/Dashboard';
 import Patients from '../pages/Patients';
 import PatientDetail from '../pages/PatientDetail';
@@ -16,6 +17,7 @@ export default function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/seed" element={<SeedRunner />} />
         <Route element={<AdminLayout />}>
           <Route path="/" element={<Dashboard />} />
 
