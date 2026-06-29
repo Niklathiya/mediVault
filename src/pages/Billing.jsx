@@ -8,6 +8,7 @@ import {
   recordPayment,
 } from '../firebase/services/billingService.js';
 import { subscribePatients } from '../firebase/services/patientService.js';
+import { useLocation } from 'react-router-dom';
 
 const BILL_TYPES = ['OPD', 'IPD', 'Lab', 'Pharmacy', 'Emergency'];
 
@@ -68,16 +69,45 @@ const labelStyle = {
 };
 
 export default function Billing() {
+  const location = useLocation();
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(true);
   const [patients, setPatients] = useState([]);
   const [filter, setFilter] = useState('All bills');
   const [filterOpen, setFilterOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(location.state?.searchQuery || '');
   const [modal, setModal] = useState(null); // { mode: 'view'|'edit'|'new', bill }
   const [form, setForm] = useState(initForm());
   const [payModal, setPayModal] = useState(null); // bill being paid
   const [payForm, setPayForm] = useState({ amount: '', mode: 'Cash', note: '' });
+
+  const openView = (bill) => setModal({ mode: 'view', bill });
+  const openEdit = (bill) => {
+    setForm(initForm(bill));
+    setModal({ mode: 'edit', bill });
+  };
+  const openNew = () => {
+    setForm(initForm());
+    setModal({ mode: 'new', bill: null });
+  };
+  const closeModal = () => setModal(null);
+
+  useEffect(() => {
+    if (!loading && bills.length > 0 && location.state?.openBillId) {
+      const bill = bills.find((b) => b.id === location.state.openBillId);
+      if (bill) {
+        const mode = location.state.mode;
+        window.history.replaceState({}, document.title);
+        setTimeout(() => {
+          if (mode === 'edit') {
+            openEdit(bill);
+          } else {
+            openView(bill);
+          }
+        }, 0);
+      }
+    }
+  }, [loading, bills, location.state]);
 
   useEffect(() => {
     const unsubB = subscribeBills(
@@ -108,17 +138,6 @@ export default function Billing() {
   const totalBilled = bills.reduce((s, b) => s + b.amount, 0);
   const totalCollected = bills.reduce((s, b) => s + b.paid, 0);
   const totalOutstanding = bills.reduce((s, b) => s + (b.amount - b.paid), 0);
-
-  const openView = (bill) => setModal({ mode: 'view', bill });
-  const openEdit = (bill) => {
-    setForm(initForm(bill));
-    setModal({ mode: 'edit', bill });
-  };
-  const openNew = () => {
-    setForm(initForm());
-    setModal({ mode: 'new', bill: null });
-  };
-  const closeModal = () => setModal(null);
 
   const openPayModal = (bill) => {
     setPayForm({ amount: bill.amount - bill.paid, mode: 'Cash', note: '' });

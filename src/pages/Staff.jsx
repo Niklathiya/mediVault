@@ -815,8 +815,14 @@ export default function Staff() {
   const [loading, setLoading] = useState(true);
   const [modal, setModal]     = useState(null); // { mode: 'add'|'edit', member }
 
-  useEffect(() => {
+  // Adjust state during render when tab changes to avoid synchronous setState inside useEffect
+  const [prevTab, setPrevTab] = useState(tab);
+  if (tab !== prevTab) {
+    setPrevTab(tab);
     setLoading(true);
+  }
+
+  useEffect(() => {
     const unsub = subscribeStaffByRole(
       tab,
       (data) => { setMembers(data); setLoading(false); },
@@ -858,13 +864,13 @@ export default function Staff() {
   return (
     <div style={{ animation: 'mv-fade 200ms ease both' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
-          <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-on-light-muted)', fontWeight: 600 }}>
-            {members.length} {meta.plural}
-          </div>
-          <h1 style={{ fontSize: 34, fontWeight: 300, letterSpacing: '-0.02em', margin: '8px 0 0', color: 'var(--fg-on-light)' }}>
+          <h1 style={{ fontSize: 34, fontWeight: 300, letterSpacing: '-0.02em', margin: 0, color: 'var(--fg-on-light)', display: 'inline-flex', alignItems: 'center', gap: 12 }}>
             {meta.title}
+            <span style={{ fontSize: 14, fontWeight: 600, background: 'var(--surface-subtle)', color: 'var(--fg-on-light)', padding: '4px 10px', borderRadius: 20, border: '1px solid var(--border-ui)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+              {members.length}
+            </span>
           </h1>
         </div>
         <button className="btn-primary" onClick={openAdd}>
