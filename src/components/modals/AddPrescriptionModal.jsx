@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Pill } from 'lucide-react';
-import { addPatientSubItem } from '../../firebase/services/patientService.js';
+import { addPatientSubItem, updatePatientSubItem } from '../../firebase/services/patientService.js';
 
 const TODAY  = new Date().toISOString().slice(0, 10);
 
@@ -9,6 +9,14 @@ function isoToDisplay(iso) {
   if (!iso) return '';
   const [y, m, d] = iso.split('-');
   return `${d}/${m}/${y}`;
+}
+
+function displayToIso(dmy) {
+  if (!dmy) return TODAY;
+  const parts = dmy.split('/');
+  if (parts.length !== 3) return TODAY;
+  const [d, m, y] = parts;
+  return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
 }
 
 const empty = { drug: '', date: TODAY, dosage: '', frequency: '', duration: '', doctor: '', instructions: '' };
@@ -25,8 +33,21 @@ const lbl = {
   color: 'var(--fg-on-light-muted)', marginBottom: 4,
 };
 
-export default function AddPrescriptionModal({ open, patientId, onAdd, onClose }) {
-  const [form, setForm]     = useState(empty);
+export default function AddPrescriptionModal({ open, patientId, onAdd, onClose, initialData, editId, onUpdate }) {
+  const isEdit = Boolean(editId);
+  const [form, setForm] = useState(() =>
+    initialData
+      ? {
+          drug:         initialData.drug || '',
+          date:         displayToIso(initialData.date),
+          dosage:       initialData.dosage || '',
+          frequency:    initialData.frequency || '',
+          duration:     initialData.duration || '',
+          doctor:       initialData.doctor || '',
+          instructions: initialData.instructions || '',
+        }
+      : empty
+  );
   const [saving, setSaving] = useState(false);
   const [done, setDone]     = useState(false);
 
@@ -47,12 +68,17 @@ export default function AddPrescriptionModal({ open, patientId, onAdd, onClose }
         duration:     form.duration,
         doctor:       form.doctor,
         instructions: form.instructions,
-        time:         new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
       };
-      const ref = await addPatientSubItem(patientId, 'prescriptions', data);
-      onAdd({ id: ref.id, ...data });
+      if (isEdit) {
+        await updatePatientSubItem(patientId, 'prescriptions', editId, data);
+        onUpdate({ id: editId, ...data });
+      } else {
+        data.time = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const ref = await addPatientSubItem(patientId, 'prescriptions', data);
+        onAdd({ id: ref.id, ...data });
+      }
       setDone(true);
-      setTimeout(() => { setDone(false); setForm(empty); onClose(); }, 1000);
+      setTimeout(() => { setDone(false); onClose(); }, 1000);
     } catch (err) {
       console.error(err);
       setSaving(false);
@@ -73,7 +99,7 @@ export default function AddPrescriptionModal({ open, patientId, onAdd, onClose }
               <Pill size={16} color="white" />
             </div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--fg-on-light)' }}>Add Prescription</div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--fg-on-light)' }}>{isEdit ? 'Edit Prescription' : 'Add Prescription'}</div>
               <div style={{ fontSize: 12, color: 'var(--fg-on-light-muted)' }}>Record a medication prescription</div>
             </div>
           </div>
@@ -127,7 +153,7 @@ export default function AddPrescriptionModal({ open, patientId, onAdd, onClose }
         <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border-card)', display: 'flex', justifyContent: 'flex-end', gap: 10, background: 'var(--surface-subtle)', flexShrink: 0 }}>
           <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
           <button type="submit" onClick={handleSubmit} className="btn-primary" disabled={saving || done}>
-            {done ? 'Saved!' : saving ? 'Saving…' : 'Save Prescription'}
+            {done ? 'Saved!' : saving ? 'Saving…' : isEdit ? 'Update Prescription' : 'Save Prescription'}
           </button>
         </div>
       </div>

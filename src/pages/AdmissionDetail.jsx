@@ -594,6 +594,7 @@ export default function AdmissionDetail() {
   const [activeTab, setActiveTab] = useState('overview');
   const [showDS, setShowDS] = useState(false);
   const [entryModal, setEntryModal] = useState(null);
+  const [editEntryInfo, setEditEntryInfo] = useState(null); // { type, index, item }
   const [invSubTab, setInvSubTab] = useState('pathology');
   const [procSubTab, setProcSubTab] = useState('equipment');
   const [treatView, setTreatView] = useState('list');
@@ -694,9 +695,59 @@ export default function AdmissionDetail() {
     rounds: 'visits',
   };
 
+  const TYPE_TO_SUB_KEY = {
+    medications: 'medications',
+    clinical: 'clinicalNotes',
+    nursing: 'nursingNotes',
+    pathology: 'pathology',
+    radiology: 'radiology',
+    cardiology: 'cardiology',
+    equipment: 'equipment',
+    dressing: 'dressing',
+    traction: 'traction',
+    rounds: 'rounds',
+  };
+
   const openEntryModal = (type) => {
     const targetTab = entryTypeToTab[type] || currentTab;
     if (canEditIpdTab(targetTab)) setEntryModal(type);
+  };
+
+  const handleOpenEditEntry = (type, index) => {
+    const subKey = TYPE_TO_SUB_KEY[type];
+    if (!subKey) return;
+    const item = (cf[subKey] || [])[index];
+    if (!item) return;
+    const targetTab = entryTypeToTab[type] || currentTab;
+    if (!canEditIpdTab(targetTab)) return;
+    setEditEntryInfo({ type, index, item });
+    setEntryModal(type);
+  };
+
+  const handleDeleteCasefileItem = async (subKey, index) => {
+    const labels = {
+      medications: 'medication', clinicalNotes: 'clinical note', nursingNotes: 'nursing note',
+      pathology: 'pathology record', radiology: 'radiology record', cardiology: 'cardiology record',
+      equipment: 'equipment record', dressing: 'dressing record', traction: 'traction record',
+      rounds: 'visit record',
+    };
+    if (!window.confirm(`Delete this ${labels[subKey] || 'record'}?`)) return;
+    const updatedList = (cf[subKey] || []).filter((_, i) => i !== index);
+    const updatedAdm = { ...adm, casefile: { ...cf, [subKey]: updatedList } };
+    if (subKey === 'medications') updatedAdm.medications = updatedList.length;
+    if (subKey === 'clinicalNotes') updatedAdm.clinical = updatedList.length;
+    if (subKey === 'nursingNotes') updatedAdm.nursing = updatedList.length;
+    if (['pathology', 'radiology', 'cardiology'].includes(subKey)) {
+      updatedAdm.investigations = ['pathology', 'radiology', 'cardiology']
+        .reduce((sum, k) => sum + (k === subKey ? updatedList : (cf[k] || [])).length, 0);
+    }
+    if (['equipment', 'dressing', 'traction'].includes(subKey)) {
+      updatedAdm.procedures = ['equipment', 'dressing', 'traction']
+        .reduce((sum, k) => sum + (k === subKey ? updatedList : (cf[k] || [])).length, 0);
+    }
+    if (subKey === 'rounds') updatedAdm.visits = updatedList.length;
+    await updateAdmission(id, updatedAdm);
+    setAdm(updatedAdm);
   };
 
   const handleSaveEntry = async (updates) => {
@@ -744,6 +795,7 @@ export default function AdmissionDetail() {
     await updateAdmission(id, updatedAdm);
     setAdm(updatedAdm);
     setEntryModal(null);
+    setEditEntryInfo(null);
   };
 
   const printAdmission = () => {
@@ -2658,9 +2710,9 @@ export default function AdmissionDetail() {
                   No medications recorded.
                 </div>
               ) : (
-                (cf.medications || []).map((m) => (
+                (cf.medications || []).map((m, idx) => (
                   <div
-                    key={m.sr}
+                    key={m.sr || idx}
                     style={{
                       ...tblRow,
                       gridTemplateColumns: '46px 2.2fr 90px 90px 130px 70px 72px',
@@ -2686,7 +2738,7 @@ export default function AdmissionDetail() {
                     <div style={{ color: C.text }}>{m.frequency}</div>
                     <div style={{ color: C.muted }}>{m.qty}</div>
                     <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                      <button style={iconBtnSm}>
+                      <button style={iconBtnSm} onClick={() => handleOpenEditEntry('medications', idx)}>
                         <Pencil size={11} />
                       </button>
                       <button
@@ -2695,6 +2747,7 @@ export default function AdmissionDetail() {
                           border: '1px solid rgba(217,80,80,0.3)',
                           color: '#d95050',
                         }}
+                        onClick={() => handleDeleteCasefileItem('medications', idx)}
                       >
                         <Trash2 size={11} />
                       </button>
@@ -2939,7 +2992,7 @@ export default function AdmissionDetail() {
                   No clinical notes recorded.
                 </div>
               ) : (
-                (cf.clinicalNotes || []).map((n) => {
+                (cf.clinicalNotes || []).map((n, idx) => {
                   const [y, m, d] = n.date.split('-');
                   const mo = [
                     'Jan',
@@ -2957,7 +3010,7 @@ export default function AdmissionDetail() {
                   ][+m - 1];
                   return (
                     <div
-                      key={n.id}
+                      key={n.id || idx}
                       style={{
                         display: 'grid',
                         gridTemplateColumns: '130px 1fr 80px',
@@ -2995,10 +3048,13 @@ export default function AdmissionDetail() {
                         {n.note}
                       </div>
                       <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                        <button style={iconBtnSm} title="Print">
+                        <button style={iconBtnSm} title="Print" onClick={() => {
+                          const pri = (() => { let f = document.getElementById('print-iframe'); if (!f) { f = document.createElement('iframe'); f.id = 'print-iframe'; f.style.cssText = 'position:absolute;width:0;height:0;border:0;top:-1000px;left:-1000px;'; document.body.appendChild(f); } return f.contentWindow || f.contentDocument; })();
+                          pri.document.open(); pri.document.write(`<!DOCTYPE html><html><head><title>Clinical Note</title><style>body{font-family:sans-serif;padding:32px;color:#0f172a;}</style></head><body><h2>Clinical Note — ${adm.patientName}</h2><p><strong>Date:</strong> ${n.date} ${n.time}</p><p><strong>Doctor:</strong> ${n.doctor}</p><p style="margin-top:16px;border-left:3px solid #0891b2;padding-left:12px;">${n.note}</p></body></html>`); pri.document.close(); setTimeout(() => { pri.focus(); pri.print(); }, 100);
+                        }}>
                           <Printer size={11} />
                         </button>
-                        <button style={iconBtnSm} title="Edit">
+                        <button style={iconBtnSm} title="Edit" onClick={() => handleOpenEditEntry('clinical', idx)}>
                           <Pencil size={11} />
                         </button>
                         <button
@@ -3008,6 +3064,7 @@ export default function AdmissionDetail() {
                             color: '#d95050',
                           }}
                           title="Delete"
+                          onClick={() => handleDeleteCasefileItem('clinicalNotes', idx)}
                         >
                           <Trash2 size={11} />
                         </button>
@@ -3067,9 +3124,9 @@ export default function AdmissionDetail() {
                   No nursing notes recorded.
                 </div>
               ) : (
-                (cf.nursingNotes || []).map((n) => (
+                (cf.nursingNotes || []).map((n, idx) => (
                   <div
-                    key={n.id}
+                    key={n.id || idx}
                     style={{
                       ...tblRow,
                       gridTemplateColumns: '170px 1fr 160px 72px',
@@ -3084,7 +3141,7 @@ export default function AdmissionDetail() {
                       {n.sign}
                     </div>
                     <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                      <button style={iconBtnSm}>
+                      <button style={iconBtnSm} onClick={() => handleOpenEditEntry('nursing', idx)}>
                         <Pencil size={11} />
                       </button>
                       <button
@@ -3093,6 +3150,7 @@ export default function AdmissionDetail() {
                           border: '1px solid rgba(217,80,80,0.3)',
                           color: '#d95050',
                         }}
+                        onClick={() => handleDeleteCasefileItem('nursingNotes', idx)}
                       >
                         <Trash2 size={11} />
                       </button>
@@ -3200,7 +3258,7 @@ export default function AdmissionDetail() {
                             {p.sign}
                           </div>
                           <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                            <button style={iconBtnSm}>
+                            <button style={iconBtnSm} onClick={() => handleOpenEditEntry('pathology', i)}>
                               <Pencil size={11} />
                             </button>
                             <button
@@ -3209,6 +3267,7 @@ export default function AdmissionDetail() {
                                 border: '1px solid rgba(217,80,80,0.3)',
                                 color: '#d95050',
                               }}
+                              onClick={() => handleDeleteCasefileItem('pathology', i)}
                             >
                               <Trash2 size={11} />
                             </button>
@@ -3278,7 +3337,7 @@ export default function AdmissionDetail() {
                             {r.sign}
                           </div>
                           <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                            <button style={iconBtnSm}>
+                            <button style={iconBtnSm} onClick={() => handleOpenEditEntry('radiology', i)}>
                               <Pencil size={11} />
                             </button>
                             <button
@@ -3287,6 +3346,7 @@ export default function AdmissionDetail() {
                                 border: '1px solid rgba(217,80,80,0.3)',
                                 color: '#d95050',
                               }}
+                              onClick={() => handleDeleteCasefileItem('radiology', i)}
                             >
                               <Trash2 size={11} />
                             </button>
@@ -3337,7 +3397,7 @@ export default function AdmissionDetail() {
                             {c.sign}
                           </div>
                           <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                            <button style={iconBtnSm}>
+                            <button style={iconBtnSm} onClick={() => handleOpenEditEntry('cardiology', i)}>
                               <Pencil size={11} />
                             </button>
                             <button
@@ -3346,6 +3406,7 @@ export default function AdmissionDetail() {
                                 border: '1px solid rgba(217,80,80,0.3)',
                                 color: '#d95050',
                               }}
+                              onClick={() => handleDeleteCasefileItem('cardiology', i)}
                             >
                               <Trash2 size={11} />
                             </button>
@@ -3483,7 +3544,7 @@ export default function AdmissionDetail() {
                           {eq.offSign || '—'}
                         </div>
                         <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                          <button style={iconBtnSm}>
+                          <button style={iconBtnSm} onClick={() => handleOpenEditEntry('equipment', i)}>
                             <Pencil size={11} />
                           </button>
                           <button
@@ -3492,6 +3553,7 @@ export default function AdmissionDetail() {
                               border: '1px solid rgba(217,80,80,0.3)',
                               color: '#d95050',
                             }}
+                            onClick={() => handleDeleteCasefileItem('equipment', i)}
                           >
                             <Trash2 size={11} />
                           </button>
@@ -3541,7 +3603,7 @@ export default function AdmissionDetail() {
                           {d.sign}
                         </div>
                         <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                          <button style={iconBtnSm}>
+                          <button style={iconBtnSm} onClick={() => handleOpenEditEntry('dressing', i)}>
                             <Pencil size={11} />
                           </button>
                           <button
@@ -3550,6 +3612,7 @@ export default function AdmissionDetail() {
                               border: '1px solid rgba(217,80,80,0.3)',
                               color: '#d95050',
                             }}
+                            onClick={() => handleDeleteCasefileItem('dressing', i)}
                           >
                             <Trash2 size={11} />
                           </button>
@@ -3611,7 +3674,7 @@ export default function AdmissionDetail() {
                           {t.sign}
                         </div>
                         <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                          <button style={iconBtnSm}>
+                          <button style={iconBtnSm} onClick={() => handleOpenEditEntry('traction', i)}>
                             <Pencil size={11} />
                           </button>
                           <button
@@ -3620,6 +3683,7 @@ export default function AdmissionDetail() {
                               border: '1px solid rgba(217,80,80,0.3)',
                               color: '#d95050',
                             }}
+                            onClick={() => handleDeleteCasefileItem('traction', i)}
                           >
                             <Trash2 size={11} />
                           </button>
@@ -3731,7 +3795,7 @@ export default function AdmissionDetail() {
                       {r.signature}
                     </div>
                     <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                      <button style={iconBtnSm}>
+                      <button style={iconBtnSm} onClick={() => handleOpenEditEntry('rounds', i)}>
                         <Pencil size={11} />
                       </button>
                       <button
@@ -3740,6 +3804,7 @@ export default function AdmissionDetail() {
                           border: '1px solid rgba(217,80,80,0.3)',
                           color: '#d95050',
                         }}
+                        onClick={() => handleDeleteCasefileItem('rounds', i)}
                       >
                         <Trash2 size={11} />
                       </button>
@@ -3766,9 +3831,11 @@ export default function AdmissionDetail() {
 
       {entryModal && canEditIpdTab(entryTypeToTab[entryModal] || currentTab) && (
         <CaseFileEntryModal
+          key={editEntryInfo ? `edit-${editEntryInfo.type}-${editEntryInfo.index}` : `add-${entryModal}`}
           type={entryModal}
           adm={adm}
-          onClose={() => setEntryModal(null)}
+          editInfo={editEntryInfo}
+          onClose={() => { setEntryModal(null); setEditEntryInfo(null); }}
           onSave={handleSaveEntry}
         />
       )}
@@ -3778,9 +3845,24 @@ export default function AdmissionDetail() {
 
 // ── ENTRY MODAL FOR CASE FILE SECTIONS ────────────────────────────────────────
 
-function CaseFileEntryModal({ type, adm, onClose, onSave }) {
+function CaseFileEntryModal({ type, adm, onClose, onSave, editInfo }) {
+  const isEdit = Boolean(editInfo);
   const cf = adm.casefile || {};
   const [fields, setFields] = useState(() => {
+    // In edit mode, pre-populate from existing item for list types
+    if (isEdit && editInfo.item) {
+      const item = editInfo.item;
+      if (type === 'medications') return { drug: item.drug || '', dose: item.dose || '', route: item.route || 'Oral', frequency: item.frequency || 'BD', qty: String(item.qty ?? 10) };
+      if (type === 'clinical') return { note: item.note || '', doctor: item.doctor || '' };
+      if (type === 'nursing') return { note: item.note || '', sign: item.sign || 'Nurse on duty' };
+      if (type === 'pathology') return { investigation: item.investigation || '', sign: item.sign || '' };
+      if (type === 'radiology') return { investigation: item.investigation || '', portable: item.portable ?? false, rtEr: item.rtEr ?? false, plateNo: item.plateNo || '', sign: item.sign || '' };
+      if (type === 'cardiology') return { investigation: item.investigation || '', doctor: item.doctor || '', sign: item.sign || '' };
+      if (type === 'equipment') return { type: item.type || '', onDate: TODAY, onTime: item.onTime || '', sign: item.sign || '', offDate: '', offTime: item.offTime || '', offSign: item.offSign || '' };
+      if (type === 'dressing') return { procedure: item.procedure || '', doctor: item.doctor || '', sign: item.sign || '' };
+      if (type === 'traction') return { procedure: item.procedure || '', startDate: TODAY, startTime: item.startTime || '', endDate: '', endTime: item.endTime || '', sign: item.sign || '' };
+      if (type === 'rounds') return { date: TODAY, first: item.first ?? false, routine: item.routine ?? true, daySpcl: item.daySpcl ?? false, nightSpcl: item.nightSpcl ?? false, consultant: item.consultant || '', signature: item.signature || '' };
+    }
     if (type === 'consent') {
       return { consent: !!adm.consent };
     }
@@ -3996,124 +4078,106 @@ function CaseFileEntryModal({ type, adm, onClose, onSave }) {
       } else if (type === 'medications') {
         const list = cf.medications || [];
         const newItem = {
-          sr: list.length + 1,
+          sr: isEdit ? (editInfo.item.sr ?? editInfo.index + 1) : list.length + 1,
           drug: fields.drug,
           dose: fields.dose,
           route: fields.route,
           frequency: fields.frequency,
           qty: parseInt(fields.qty) || 0,
         };
-        updates.casefile = { medications: [...list, newItem] };
+        const updated = isEdit ? list.map((x, i) => i === editInfo.index ? newItem : x) : [...list, newItem];
+        updates.casefile = { medications: updated };
       } else if (type === 'clinical') {
         const list = cf.clinicalNotes || [];
         const newItem = {
-          id: 'CN-' + Date.now(),
-          date: TODAY,
-          time: new Date().toLocaleTimeString('en-IN', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true,
-          }),
+          id: isEdit ? (editInfo.item.id || 'CN-' + Date.now()) : 'CN-' + Date.now(),
+          date: isEdit ? (editInfo.item.date || TODAY) : TODAY,
+          time: isEdit ? (editInfo.item.time || '') : new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
           note: fields.note,
           doctor: fields.doctor,
         };
-        updates.casefile = { clinicalNotes: [...list, newItem] };
+        const updated = isEdit ? list.map((x, i) => i === editInfo.index ? newItem : x) : [...list, newItem];
+        updates.casefile = { clinicalNotes: updated };
       } else if (type === 'nursing') {
         const list = cf.nursingNotes || [];
         const newItem = {
-          id: 'NN-' + Date.now(),
-          dateTime:
-            fmtDate(TODAY) +
-            ' ' +
-            new Date().toLocaleTimeString('en-IN', {
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: true,
-            }),
+          id: isEdit ? (editInfo.item.id || 'NN-' + Date.now()) : 'NN-' + Date.now(),
+          dateTime: isEdit ? editInfo.item.dateTime : (fmtDate(TODAY) + ' ' + new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })),
           note: fields.note,
           sign: fields.sign,
         };
-        updates.casefile = { nursingNotes: [...list, newItem] };
+        const updated = isEdit ? list.map((x, i) => i === editInfo.index ? newItem : x) : [...list, newItem];
+        updates.casefile = { nursingNotes: updated };
       } else if (type === 'pathology') {
         const list = cf.pathology || [];
         const newItem = {
-          date: fmtDate(TODAY),
-          time: new Date().toLocaleTimeString('en-IN', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true,
-          }),
+          date: isEdit ? editInfo.item.date : fmtDate(TODAY),
+          time: isEdit ? editInfo.item.time : new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
           investigation: fields.investigation,
           sign: fields.sign,
         };
-        updates.casefile = { pathology: [...list, newItem] };
+        const updated = isEdit ? list.map((x, i) => i === editInfo.index ? newItem : x) : [...list, newItem];
+        updates.casefile = { pathology: updated };
       } else if (type === 'radiology') {
         const list = cf.radiology || [];
         const newItem = {
-          date: fmtDate(TODAY),
-          time: new Date().toLocaleTimeString('en-IN', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true,
-          }),
+          date: isEdit ? editInfo.item.date : fmtDate(TODAY),
+          time: isEdit ? editInfo.item.time : new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
           investigation: fields.investigation,
           portable: fields.portable,
           rtEr: fields.rtEr,
           plateNo: fields.plateNo,
           sign: fields.sign,
         };
-        updates.casefile = { radiology: [...list, newItem] };
+        const updated = isEdit ? list.map((x, i) => i === editInfo.index ? newItem : x) : [...list, newItem];
+        updates.casefile = { radiology: updated };
       } else if (type === 'cardiology') {
         const list = cf.cardiology || [];
         const newItem = {
-          date: fmtDate(TODAY),
-          time: new Date().toLocaleTimeString('en-IN', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true,
-          }),
+          date: isEdit ? editInfo.item.date : fmtDate(TODAY),
+          time: isEdit ? editInfo.item.time : new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
           investigation: fields.investigation,
           doctor: fields.doctor,
           sign: fields.sign,
         };
-        updates.casefile = { cardiology: [...list, newItem] };
+        const updated = isEdit ? list.map((x, i) => i === editInfo.index ? newItem : x) : [...list, newItem];
+        updates.casefile = { cardiology: updated };
       } else if (type === 'equipment') {
         const list = cf.equipment || [];
         const newItem = {
           type: fields.type,
-          onDate: fmtDate(fields.onDate),
+          onDate: isEdit ? editInfo.item.onDate : fmtDate(fields.onDate),
           onTime: fields.onTime,
           sign: fields.sign,
           offDate: fields.offDate ? fmtDate(fields.offDate) : '',
           offTime: fields.offTime,
           offSign: fields.offSign,
         };
-        updates.casefile = { equipment: [...list, newItem] };
+        const updated = isEdit ? list.map((x, i) => i === editInfo.index ? newItem : x) : [...list, newItem];
+        updates.casefile = { equipment: updated };
       } else if (type === 'dressing') {
         const list = cf.dressing || [];
         const newItem = {
-          date: fmtDate(TODAY),
-          time: new Date().toLocaleTimeString('en-IN', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true,
-          }),
+          date: isEdit ? editInfo.item.date : fmtDate(TODAY),
+          time: isEdit ? editInfo.item.time : new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
           procedure: fields.procedure,
           doctor: fields.doctor,
           sign: fields.sign,
         };
-        updates.casefile = { dressing: [...list, newItem] };
+        const updated = isEdit ? list.map((x, i) => i === editInfo.index ? newItem : x) : [...list, newItem];
+        updates.casefile = { dressing: updated };
       } else if (type === 'traction') {
         const list = cf.traction || [];
         const newItem = {
           procedure: fields.procedure,
-          startDate: fmtDate(fields.startDate),
+          startDate: isEdit ? editInfo.item.startDate : fmtDate(fields.startDate),
           startTime: fields.startTime,
           endDate: fields.endDate ? fmtDate(fields.endDate) : '',
           endTime: fields.endTime,
           sign: fields.sign,
         };
-        updates.casefile = { traction: [...list, newItem] };
+        const updated = isEdit ? list.map((x, i) => i === editInfo.index ? newItem : x) : [...list, newItem];
+        updates.casefile = { traction: updated };
       } else if (type === 'rounds') {
         const list = cf.rounds || [];
         const newItem = {
@@ -4125,7 +4189,8 @@ function CaseFileEntryModal({ type, adm, onClose, onSave }) {
           consultant: fields.consultant,
           signature: fields.signature,
         };
-        updates.casefile = { rounds: [...list, newItem] };
+        const updated = isEdit ? list.map((x, i) => i === editInfo.index ? newItem : x) : [...list, newItem];
+        updates.casefile = { rounds: updated };
       }
       await onSave(updates);
     } catch (err) {
@@ -5188,7 +5253,7 @@ function CaseFileEntryModal({ type, adm, onClose, onSave }) {
             className="btn-primary"
             style={{ display: 'flex', alignItems: 'center', gap: 5 }}
           >
-            <Check size={15} /> {saving ? 'Saving...' : 'Save Entry'}
+            <Check size={15} /> {saving ? 'Saving...' : isEdit ? 'Update Entry' : 'Save Entry'}
           </button>
         </div>
       </div>

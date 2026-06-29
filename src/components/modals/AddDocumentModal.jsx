@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, FolderPlus, Camera, Upload } from 'lucide-react';
-import { addPatientSubItem } from '../../firebase/services/patientService.js';
+import { addPatientSubItem, updatePatientSubItem } from '../../firebase/services/patientService.js';
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
@@ -9,6 +9,14 @@ function isoToDisplay(iso) {
   if (!iso) return '';
   const [y, m, d] = iso.split('-');
   return `${d}/${m}/${y}`;
+}
+
+function displayToIso(dmy) {
+  if (!dmy) return TODAY;
+  const parts = dmy.split('/');
+  if (parts.length !== 3) return TODAY;
+  const [d, m, y] = parts;
+  return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
 }
 
 const DOC_TYPES = [
@@ -47,17 +55,27 @@ const lbl = {
   marginBottom: 4,
 };
 
-export default function AddDocumentModal({ open, patientId, onAdd, onClose }) {
-  const [form, setForm] = useState(empty);
+export default function AddDocumentModal({ open, patientId, onAdd, onClose, initialData, editId, onUpdate }) {
+  const isEdit = Boolean(editId);
+  const [form, setForm] = useState(() =>
+    initialData
+      ? {
+          name:  initialData.name || '',
+          type:  initialData.type || 'Lab Report',
+          date:  displayToIso(initialData.date),
+          notes: initialData.notes || '',
+        }
+      : empty
+  );
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
 
-  // Attachment & Camera States
+  // Attachment & Camera States (only used in add mode)
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
   const [stream, setStream] = useState(null);
   const [cameraActive, setCameraActive] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState('');
+  const [previewUrl, setPreviewUrl] = useState(isEdit ? (initialData?.fileUrl || '') : '');
   const [fileType, setFileType] = useState('');
   const [fileName, setFileName] = useState('');
 
@@ -101,7 +119,6 @@ export default function AddDocumentModal({ open, patientId, onAdd, onClose }) {
       setFileName('captured_scan.jpg');
       handleCameraStop();
     } else {
-      // Mock capture if stream failed
       setPreviewUrl(
         'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=400&q=80',
       );
@@ -150,12 +167,17 @@ export default function AddDocumentModal({ open, patientId, onAdd, onClose }) {
         notes: form.notes,
         fileUrl: previewUrl || '',
       };
-      const ref = await addPatientSubItem(patientId, 'documents', data);
-      onAdd({ id: ref.id, ...data });
+      if (isEdit) {
+        await updatePatientSubItem(patientId, 'documents', editId, data);
+        onUpdate({ id: editId, ...data });
+      } else {
+        const ref = await addPatientSubItem(patientId, 'documents', data);
+        onAdd({ id: ref.id, ...data });
+      }
       setDone(true);
       setTimeout(() => {
         setDone(false);
-        setForm(empty);
+        if (!isEdit) setForm(empty);
         cleanAndClose();
       }, 1000);
     } catch (err) {
@@ -208,7 +230,7 @@ export default function AddDocumentModal({ open, patientId, onAdd, onClose }) {
             </div>
             <div>
               <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--fg-on-light)' }}>
-                Add Document
+                {isEdit ? 'Edit Document' : 'Add Document'}
               </div>
               <div style={{ fontSize: 12, color: 'var(--fg-on-light-muted)' }}>
                 Attach a report or clinical document
@@ -245,222 +267,222 @@ export default function AddDocumentModal({ open, patientId, onAdd, onClose }) {
             gap: 14,
           }}
         >
-          {/* Attach file / scan */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-              borderBottom: '1px dashed var(--border-strong)',
-              paddingBottom: 14,
-            }}
-          >
-            <span style={lbl}>Attach File / Scan (optional)</span>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button
-                type="button"
-                onClick={handleCameraStart}
-                style={{
-                  flex: 1,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  padding: '10px 14px',
-                  border: '1px solid var(--border-ui)',
-                  borderRadius: 8,
-                  background: 'var(--surface)',
-                  color: 'var(--fg-on-light)',
-                  cursor: 'pointer',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  transition: 'background 120ms',
-                }}
-              >
-                <Camera size={15} /> Take Photo
-              </button>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                style={{
-                  flex: 1,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  padding: '10px 14px',
-                  border: '1px solid var(--border-ui)',
-                  borderRadius: 8,
-                  background: 'var(--surface)',
-                  color: 'var(--fg-on-light)',
-                  cursor: 'pointer',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  transition: 'background 120ms',
-                }}
-              >
-                <Upload size={15} /> Upload File
-              </button>
-            </div>
-
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept="image/*,application/pdf"
-              style={{ display: 'none' }}
-              onChange={handleFileChange}
-            />
-
-            <span style={{ fontSize: 11, color: 'var(--fg-on-light-muted)' }}>
-              JPG · PNG · PDF · Max 4 MB
-            </span>
-
-            {/* Camera View */}
-            {cameraActive && (
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 8,
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: 8,
-                  padding: 8,
-                  background: 'var(--surface-subtle)',
-                  marginTop: 4,
-                }}
-              >
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  style={{
-                    width: '100%',
-                    maxHeight: 200,
-                    objectFit: 'cover',
-                    borderRadius: 6,
-                    background: '#000',
-                  }}
-                />
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    type="button"
-                    onClick={handleCapture}
-                    style={{
-                      flex: 1,
-                      padding: '8px 12px',
-                      background: '#0891b2',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 6,
-                      cursor: 'pointer',
-                      fontSize: 12,
-                      fontWeight: 600,
-                    }}
-                  >
-                    Capture Photo
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCameraStop}
-                    style={{
-                      padding: '8px 12px',
-                      background: 'transparent',
-                      border: '1px solid var(--border-strong)',
-                      color: 'var(--fg-on-light)',
-                      borderRadius: 6,
-                      cursor: 'pointer',
-                      fontSize: 12,
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* File / Capture Preview */}
-            {previewUrl && (
-              <div
-                style={{
-                  position: 'relative',
-                  marginTop: 8,
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: 8,
-                  padding: 8,
-                  background: 'var(--surface-subtle)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minHeight: 80,
-                }}
-              >
-                {fileType === 'application/pdf' ? (
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: 'var(--fg-on-light)',
-                      padding: 12,
-                      textAlign: 'center',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 4,
-                    }}
-                  >
-                    <span style={{ fontWeight: 600 }}>📄 PDF Attached</span>
-                    <span style={{ fontSize: 11, color: 'var(--fg-on-light-muted)' }}>
-                      {fileName}
-                    </span>
-                  </div>
-                ) : (
-                  <div
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: 6,
-                    }}
-                  >
-                    <img
-                      src={previewUrl}
-                      alt="Scan preview"
-                      style={{
-                        maxWidth: '100%',
-                        maxHeight: 160,
-                        borderRadius: 6,
-                        objectFit: 'contain',
-                      }}
-                    />
-                    <span style={{ fontSize: 11, color: 'var(--fg-on-light-muted)' }}>
-                      {fileName}
-                    </span>
-                  </div>
-                )}
+          {/* Attach file / scan — only shown in add mode */}
+          {!isEdit && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                borderBottom: '1px dashed var(--border-strong)',
+                paddingBottom: 14,
+              }}
+            >
+              <span style={lbl}>Attach File / Scan (optional)</span>
+              <div style={{ display: 'flex', gap: 12 }}>
                 <button
                   type="button"
-                  onClick={clearAttachment}
+                  onClick={handleCameraStart}
                   style={{
-                    position: 'absolute',
-                    top: 6,
-                    right: 6,
-                    width: 24,
-                    height: 24,
-                    borderRadius: '50%',
-                    background: 'rgba(15,23,42,0.7)',
-                    color: 'white',
-                    border: 'none',
+                    flex: 1,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    padding: '10px 14px',
+                    border: '1px solid var(--border-ui)',
+                    borderRadius: 8,
+                    background: 'var(--surface)',
+                    color: 'var(--fg-on-light)',
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    transition: 'background 120ms',
+                  }}
+                >
+                  <Camera size={15} /> Take Photo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    flex: 1,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    padding: '10px 14px',
+                    border: '1px solid var(--border-ui)',
+                    borderRadius: 8,
+                    background: 'var(--surface)',
+                    color: 'var(--fg-on-light)',
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    transition: 'background 120ms',
+                  }}
+                >
+                  <Upload size={15} /> Upload File
+                </button>
+              </div>
+
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*,application/pdf"
+                style={{ display: 'none' }}
+                onChange={handleFileChange}
+              />
+
+              <span style={{ fontSize: 11, color: 'var(--fg-on-light-muted)' }}>
+                JPG · PNG · PDF · Max 4 MB
+              </span>
+
+              {cameraActive && (
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                    border: '1px solid var(--border-strong)',
+                    borderRadius: 8,
+                    padding: 8,
+                    background: 'var(--surface-subtle)',
+                    marginTop: 4,
+                  }}
+                >
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    style={{
+                      width: '100%',
+                      maxHeight: 200,
+                      objectFit: 'cover',
+                      borderRadius: 6,
+                      background: '#000',
+                    }}
+                  />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={handleCapture}
+                      style={{
+                        flex: 1,
+                        padding: '8px 12px',
+                        background: '#0891b2',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 6,
+                        cursor: 'pointer',
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Capture Photo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCameraStop}
+                      style={{
+                        padding: '8px 12px',
+                        background: 'transparent',
+                        border: '1px solid var(--border-strong)',
+                        color: 'var(--fg-on-light)',
+                        borderRadius: 6,
+                        cursor: 'pointer',
+                        fontSize: 12,
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {previewUrl && (
+                <div
+                  style={{
+                    position: 'relative',
+                    marginTop: 8,
+                    border: '1px solid var(--border-strong)',
+                    borderRadius: 8,
+                    padding: 8,
+                    background: 'var(--surface-subtle)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    cursor: 'pointer',
-                    zIndex: 10,
+                    minHeight: 80,
                   }}
                 >
-                  <X size={12} />
-                </button>
-              </div>
-            )}
-          </div>
+                  {fileType === 'application/pdf' ? (
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: 'var(--fg-on-light)',
+                        padding: 12,
+                        textAlign: 'center',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 4,
+                      }}
+                    >
+                      <span style={{ fontWeight: 600 }}>📄 PDF Attached</span>
+                      <span style={{ fontSize: 11, color: 'var(--fg-on-light-muted)' }}>
+                        {fileName}
+                      </span>
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        width: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 6,
+                      }}
+                    >
+                      <img
+                        src={previewUrl}
+                        alt="Scan preview"
+                        style={{
+                          maxWidth: '100%',
+                          maxHeight: 160,
+                          borderRadius: 6,
+                          objectFit: 'contain',
+                        }}
+                      />
+                      <span style={{ fontSize: 11, color: 'var(--fg-on-light-muted)' }}>
+                        {fileName}
+                      </span>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={clearAttachment}
+                    style={{
+                      position: 'absolute',
+                      top: 6,
+                      right: 6,
+                      width: 24,
+                      height: 24,
+                      borderRadius: '50%',
+                      background: 'rgba(15,23,42,0.7)',
+                      color: 'white',
+                      border: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      zIndex: 10,
+                    }}
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           <label>
             <span style={lbl}>Document Name *</span>
@@ -523,7 +545,7 @@ export default function AddDocumentModal({ open, patientId, onAdd, onClose }) {
             className="btn-primary"
             disabled={saving || done}
           >
-            {done ? 'Saved!' : saving ? 'Saving…' : 'Save Document'}
+            {done ? 'Saved!' : saving ? 'Saving…' : isEdit ? 'Update Document' : 'Save Document'}
           </button>
         </div>
       </div>

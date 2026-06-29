@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, BedDouble, CheckCircle2 } from 'lucide-react';
 import CustomSelect from '../ui/CustomSelect';
 import { subscribePatients } from '../../firebase/services/patientService.js';
@@ -92,7 +93,7 @@ export default function NewAdmissionModal({ open, onClose }) {
     }
   };
 
-  return (
+  return createPortal(
     <div
       className="modal-backdrop"
       onClick={onClose}
@@ -267,6 +268,7 @@ export default function NewAdmissionModal({ open, onClose }) {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
