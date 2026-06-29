@@ -1,7 +1,7 @@
 import { db } from '../firebase.js';
 import {
   collection, doc, setDoc, updateDoc, deleteDoc,
-  query, orderBy, onSnapshot, runTransaction,
+  query, orderBy, where, getDocs, onSnapshot, runTransaction,
 } from 'firebase/firestore';
 
 const COL = 'bills';
@@ -66,4 +66,14 @@ export async function recordPayment(id, paymentEntry, newPaid, newStatus) {
 /** Delete a bill */
 export async function deleteBill(id) {
   await deleteDoc(doc(db, COL, id));
+}
+
+/** Fetch all Pending or Partial bills for a patient */
+export async function getPatientPendingBills(patientId) {
+  const snap = await getDocs(
+    query(collection(db, COL), where('patientId', '==', patientId))
+  );
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((b) => b.status === 'Pending' || b.status === 'Partial');
 }

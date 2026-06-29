@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
 import { subscribeStaffByRole, addStaff, updateStaff, deleteStaff } from '../firebase/services/staffService.js';
-import { useRBAC } from '../context/RBACContext';
+import { useRBAC } from '../context/useRBAC';
 import {
   Stethoscope,
   HeartPulse,

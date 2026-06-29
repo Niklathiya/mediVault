@@ -9,7 +9,7 @@ import {
 } from '../firebase/services/billingService.js';
 import { subscribePatients } from '../firebase/services/patientService.js';
 import { useLocation } from 'react-router-dom';
-import { useRBAC } from '../context/RBACContext';
+import { useRBAC } from '../context/useRBAC';
 
 const BILL_TYPES = ['OPD', 'IPD', 'Lab', 'Pharmacy', 'Emergency'];
 
@@ -163,6 +163,18 @@ export default function Billing() {
     const newPaid = payModal.paid + amt;
     const newStatus = newPaid >= payModal.amount ? 'Paid' : newPaid > 0 ? 'Partial' : 'Pending';
     await recordPayment(payModal.id, newEntry, newPaid, newStatus);
+    // Sync the open view modal bill so it reflects the new payment immediately
+    const updatedBill = {
+      ...payModal,
+      paid: newPaid,
+      status: newStatus,
+      payments: [...(payModal.payments || []), newEntry],
+    };
+    setModal((prev) =>
+      prev && prev.bill && prev.bill.id === payModal.id
+        ? { ...prev, bill: updatedBill }
+        : prev
+    );
     closePayModal();
   };
 

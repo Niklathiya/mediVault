@@ -14,7 +14,7 @@ import AddLabModal from '../components/modals/AddLabModal.jsx';
 import RecordVitalsModal from '../components/modals/RecordVitalsModal.jsx';
 import AddDocumentModal from '../components/modals/AddDocumentModal.jsx';
 import NewAdmissionModal from '../components/modals/NewAdmissionModal.jsx';
-import { useRBAC } from '../context/RBACContext';
+import { useRBAC } from '../context/useRBAC';
 import {
   ArrowLeft,
   FileText,

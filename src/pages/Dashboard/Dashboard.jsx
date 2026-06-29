@@ -3,7 +3,7 @@ import PatientJourney from './components/PatientJourney';
 import KpiGrid from './components/KpiGrid';
 import IpdAtGlance from './components/IpdAtGlance';
 import RecentPatients from './components/RecentPatients';
-import { useRBAC } from '../../context/RBACContext';
+import { useRBAC } from '../../context/useRBAC';
 
 export default function Dashboard() {
   const { canSeeDashboardIpd } = useRBAC();

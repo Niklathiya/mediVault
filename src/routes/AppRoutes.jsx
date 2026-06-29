@@ -12,7 +12,7 @@ import Billing from '../pages/Billing';
 import Analytics from '../pages/Analytics';
 import ActivityLog from '../pages/ActivityLog';
 import Settings from '../pages/Settings';
-import { useRBAC } from '../context/RBACContext';
+import { useRBAC } from '../context/useRBAC';
 
 function ProtectedRoute({ module, children }) {
   const { canAccess } = useRBAC();
