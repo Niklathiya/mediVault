@@ -24,8 +24,7 @@ export async function addBill(formData) {
   });
 
   const today = new Date();
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const dateLabel = `${String(today.getDate()).padStart(2,'0')} ${months[today.getMonth()]} ${today.getFullYear()}`;
+  const dateLabel = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
 
   const total = (formData.items || []).reduce(
     (s, i) => s + (Number(i.qty) || 0) * (Number(i.rate) || 0), 0

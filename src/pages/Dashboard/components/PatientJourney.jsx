@@ -70,7 +70,13 @@ export default function PatientJourney() {
           return (
             <div key={step.id} style={{ display: 'contents' }}>
               <div
-                onClick={() => navigate(step.path)}
+                onClick={() => {
+                  if (step.id === 1) {
+                    navigate('/patients', { state: { openRegister: true } });
+                  } else {
+                    navigate(step.path);
+                  }
+                }}
                 style={{
                   flex: 1,
                   display: 'flex',

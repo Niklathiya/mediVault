@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Plus, X, IndianRupee, Pencil, Eye, Check, ChevronDown, Printer } from 'lucide-react';
-import { subscribeBills, addBill, updateBill, recordPayment, deleteBill } from '../firebase/services/billingService.js';
+import {
+  subscribeBills,
+  addBill,
+  updateBill,
+  recordPayment,
+} from '../firebase/services/billingService.js';
 import { subscribePatients } from '../firebase/services/patientService.js';
 
 const BILL_TYPES = ['OPD', 'IPD', 'Lab', 'Pharmacy', 'Emergency'];
-
 
 const STATUS_STYLE = {
   Paid: { bg: '#dcfce7', color: '#15803d' },
@@ -69,6 +73,7 @@ export default function Billing() {
   const [patients, setPatients] = useState([]);
   const [filter, setFilter] = useState('All bills');
   const [filterOpen, setFilterOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [modal, setModal] = useState(null); // { mode: 'view'|'edit'|'new', bill }
   const [form, setForm] = useState(initForm());
   const [payModal, setPayModal] = useState(null); // bill being paid
@@ -76,14 +81,29 @@ export default function Billing() {
 
   useEffect(() => {
     const unsubB = subscribeBills(
-      (data) => { setBills(data); setLoading(false); },
-      (err)  => { console.error('bills error:', err); setLoading(false); },
+      (data) => {
+        setBills(data);
+        setLoading(false);
+      },
+      (err) => {
+        console.error('bills error:', err);
+        setLoading(false);
+      },
     );
     const unsubP = subscribePatients((data) => setPatients(data), console.error);
-    return () => { unsubB(); unsubP(); };
+    return () => {
+      unsubB();
+      unsubP();
+    };
   }, []);
 
-  const filtered = filter === 'All bills' ? bills : bills.filter((b) => b.status === filter);
+  const filtered = (
+    filter === 'All bills' ? bills : bills.filter((b) => b.status === filter)
+  ).filter((b) => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+    return b.patient.toLowerCase().includes(q) || b.id.toLowerCase().includes(q);
+  });
 
   const totalBilled = bills.reduce((s, b) => s + b.amount, 0);
   const totalCollected = bills.reduce((s, b) => s + b.paid, 0);
@@ -109,10 +129,14 @@ export default function Billing() {
   const savePayment = async () => {
     const amt = Number(payForm.amount);
     if (!amt || !payModal) return;
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const now = new Date();
-    const dateLabel = `${String(now.getDate()).padStart(2,'0')} ${months[now.getMonth()]} ${now.getFullYear()}`;
-    const newEntry = { amount: amt, date: dateLabel, note: payForm.note || '', mode: payForm.mode || 'Cash' };
+    const dateLabel = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+    const newEntry = {
+      amount: amt,
+      date: dateLabel,
+      note: payForm.note || '',
+      mode: payForm.mode || 'Cash',
+    };
     const newPaid = payModal.paid + amt;
     const newStatus = newPaid >= payModal.amount ? 'Paid' : newPaid > 0 ? 'Partial' : 'Pending';
     await recordPayment(payModal.id, newEntry, newPaid, newStatus);
@@ -186,9 +210,8 @@ export default function Billing() {
     if (!modal) return;
     const total = calcTotal(form.items, form.discount);
     if (modal.mode === 'new') {
-      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
       const now = new Date();
-      const dateLabel = `${String(now.getDate()).padStart(2,'0')} ${months[now.getMonth()]} ${now.getFullYear()}`;
+      const dateLabel = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
       await addBill({
         patient: form.patient,
         age: 0,
@@ -220,11 +243,19 @@ export default function Billing() {
   const isNewBill = editOpen && modal !== null && modal.mode === 'new';
   const payBillOpen = payModal !== null;
 
-  if (loading) return (
-    <div style={{ padding: 60, textAlign: 'center', color: 'var(--fg-on-light-muted)', fontSize: 14 }}>
-      Loading billing records…
-    </div>
-  );
+  if (loading)
+    return (
+      <div
+        style={{
+          padding: 60,
+          textAlign: 'center',
+          color: 'var(--fg-on-light-muted)',
+          fontSize: 14,
+        }}
+      >
+        Loading billing records…
+      </div>
+    );
 
   return (
     <div style={{ animation: 'mv-fade 200ms ease both' }}>
@@ -309,42 +340,61 @@ export default function Billing() {
           marginBottom: 14,
         }}
       >
-        <div style={{ position: 'relative' }}>
-          <select
-            value={filter}
-            onMouseDown={() => setFilterOpen((o) => !o)}
-            onChange={(e) => {
-              setFilter(e.target.value);
-              setFilterOpen(false);
-            }}
-            onBlur={() => setFilterOpen(false)}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ position: 'relative' }}>
+            <select
+              value={filter}
+              onMouseDown={() => setFilterOpen((o) => !o)}
+              onChange={(e) => {
+                setFilter(e.target.value);
+                setFilterOpen(false);
+              }}
+              onBlur={() => setFilterOpen(false)}
+              style={{
+                padding: '9px 36px 9px 14px',
+                border: '1px solid var(--border-ui)',
+                borderRadius: 8,
+                background: 'var(--surface)',
+                fontSize: 13,
+                color: 'var(--fg-on-light)',
+                outline: 'none',
+                cursor: 'pointer',
+                appearance: 'none',
+                fontFamily: 'inherit',
+              }}
+            >
+              {['All bills', 'Pending', 'Partial', 'Paid'].map((s) => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+            <ChevronDown
+              size={13}
+              style={{
+                position: 'absolute',
+                right: 10,
+                top: '50%',
+                transform: `translateY(-50%) rotate(${filterOpen ? '180deg' : '0deg'})`,
+                transition: 'transform 180ms ease',
+                color: 'var(--fg-on-light-muted)',
+                pointerEvents: 'none',
+              }}
+            />
+          </div>
+          <input
+            type="text"
+            placeholder="Search patient or invoice..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             style={{
-              padding: '9px 36px 9px 14px',
+              padding: '9px 14px',
               border: '1px solid var(--border-ui)',
               borderRadius: 8,
               background: 'var(--surface)',
               fontSize: 13,
               color: 'var(--fg-on-light)',
               outline: 'none',
-              cursor: 'pointer',
-              appearance: 'none',
+              width: 220,
               fontFamily: 'inherit',
-            }}
-          >
-            {['All bills', 'Pending', 'Partial', 'Paid'].map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
-          <ChevronDown
-            size={13}
-            style={{
-              position: 'absolute',
-              right: 10,
-              top: '50%',
-              transform: `translateY(-50%) rotate(${filterOpen ? '180deg' : '0deg'})`,
-              transition: 'transform 180ms ease',
-              color: 'var(--fg-on-light-muted)',
-              pointerEvents: 'none',
             }}
           />
         </div>
@@ -921,9 +971,13 @@ export default function Billing() {
                         style={{ ...inputStyle, marginTop: 4 }}
                       >
                         <option value="">— Select patient —</option>
-                        {patients.filter(p => p.status !== 'archived').map((p) => (
-                          <option key={p.id} value={p.name}>{p.name} ({p.id})</option>
-                        ))}
+                        {patients
+                          .filter((p) => p.status !== 'archived')
+                          .map((p) => (
+                            <option key={p.id} value={p.name}>
+                              {p.name} ({p.id})
+                            </option>
+                          ))}
                       </select>
                     ) : (
                       <div

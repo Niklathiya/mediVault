@@ -1,51 +1,73 @@
-import { Users, FlaskConical, BedDouble, IndianRupee } from 'lucide-react';
-
-const KPIs = [
-  {
-    label: 'Active patients',
-    value: 128,
-    badge: '+12 this month',
-    badgeColor: '#15803d',
-    badgeBg: 'rgba(78,179,116,0.10)',
-    iconBg: 'var(--surface-subtle)',
-    iconColor: 'var(--fg-on-light)',
-    icon: Users,
-  },
-  {
-    label: 'Pending lab reports',
-    value: 7,
-    badge: '3 urgent',
-    badgeColor: '#92400e',
-    badgeBg: 'rgba(217,164,65,0.12)',
-    iconBg: 'rgba(217,164,65,0.10)',
-    iconColor: '#d9a441',
-    icon: FlaskConical,
-  },
-  {
-    label: 'IPD admissions',
-    value: 14,
-    badge: 'Currently active',
-    badgeColor: '#0369a1',
-    badgeBg: 'rgba(8,145,178,0.10)',
-    iconBg: 'rgba(8,145,178,0.10)',
-    iconColor: '#0891b2',
-    icon: BedDouble,
-  },
-  {
-    label: 'Revenue this month',
-    value: '₹3.4L',
-    badge: '+21%',
-    badgeColor: '#15803d',
-    badgeBg: 'rgba(78,179,116,0.10)',
-    iconBg: 'rgba(21,128,61,0.10)',
-    iconColor: '#15803d',
-    icon: IndianRupee,
-  },
-];
+import { useState, useEffect } from 'react';
+import { Users, FlaskConical, BedDouble, IndianRupee, Leaf } from 'lucide-react';
+import { subscribeLogs } from '../../../firebase/services/activityLogService.js';
 
 export default function KpiGrid() {
+  const [paperSaved, setPaperSaved] = useState(0);
+
+  useEffect(() => {
+    const unsub = subscribeLogs(
+      (data) => setPaperSaved(data.length * 5),
+      console.error
+    );
+    return unsub;
+  }, []);
+
+  const KPIs = [
+    {
+      label: 'Active patients',
+      value: 128,
+      badge: '+12 this month',
+      badgeColor: '#15803d',
+      badgeBg: 'rgba(78,179,116,0.10)',
+      iconBg: 'var(--surface-subtle)',
+      iconColor: 'var(--fg-on-light)',
+      icon: Users,
+    },
+    {
+      label: 'Pending lab reports',
+      value: 7,
+      badge: '3 urgent',
+      badgeColor: '#92400e',
+      badgeBg: 'rgba(217,164,65,0.12)',
+      iconBg: 'rgba(217,164,65,0.10)',
+      iconColor: '#d9a441',
+      icon: FlaskConical,
+    },
+    {
+      label: 'IPD admissions',
+      value: 14,
+      badge: 'Currently active',
+      badgeColor: '#0369a1',
+      badgeBg: 'rgba(8,145,178,0.10)',
+      iconBg: 'rgba(8,145,178,0.10)',
+      iconColor: '#0891b2',
+      icon: BedDouble,
+    },
+    {
+      label: 'Revenue this month',
+      value: '₹3.4L',
+      badge: '+21%',
+      badgeColor: '#15803d',
+      badgeBg: 'rgba(78,179,116,0.10)',
+      iconBg: 'rgba(21,128,61,0.10)',
+      iconColor: '#15803d',
+      icon: IndianRupee,
+    },
+    {
+      label: 'Paper sheets saved',
+      value: paperSaved.toLocaleString(),
+      badge: 'Eco impact',
+      badgeColor: '#0891b2',
+      badgeBg: 'rgba(8,145,178,0.10)',
+      iconBg: 'rgba(8,145,178,0.10)',
+      iconColor: '#0891b2',
+      icon: Leaf,
+    },
+  ];
+
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16 }}>
       {KPIs.map((kpi) => {
         const Icon = kpi.icon;
         return (

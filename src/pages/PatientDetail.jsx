@@ -24,7 +24,7 @@ const TABS = [
   { id: 'labs',          label: 'Lab Results',    icon: FlaskConical,   countKey: 'labs' },
   { id: 'vitals',        label: 'Vitals',         icon: Activity,       countKey: 'vitals' },
   { id: 'documents',     label: 'Documents',      icon: Folder,         countKey: 'documents' },
-  { id: 'timeline',      label: 'Timeline',       icon: Clock },
+  { id: 'timeline',      label: 'History',        icon: Clock },
   { id: 'billing',       label: 'Billing',        icon: Receipt,        countKey: 'billings' },
   { id: 'admissions',    label: 'IPD Admissions', icon: BedDouble,      countKey: 'admissions' },
 ];
@@ -61,8 +61,28 @@ const daysBetween = (a, b) =>
 const fmtDate = (iso) => {
   if (!iso) return '—';
   const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+};
+
+const ensureDmyDate = (dStr) => {
+  if (!dStr) return '';
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(dStr)) return dStr;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dStr)) {
+    const [y, m, d] = dStr.split('-');
+    return `${d}/${m}/${y}`;
+  }
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return `${d} ${months[+m - 1]} ${y}`;
+  const parts = dStr.replace(/,/g, '').split(' ');
+  if (parts.length === 3) {
+    const day = parts[0].padStart(2, '0');
+    const monthIndex = months.indexOf(parts[1].slice(0, 3));
+    const year = parts[2];
+    if (monthIndex !== -1) {
+      const month = String(monthIndex + 1).padStart(2, '0');
+      return `${day}/${month}/${year}`;
+    }
+  }
+  return dStr;
 };
 
 // ── ICON BUTTONS ─────────────────────────────────────────────────────────────
@@ -194,10 +214,10 @@ export default function PatientDetail() {
 
   // ── TIMELINE ──────────────────────────────────────────────────────────────
   const timeline = [
-    ...patient.visits.map((v) => ({ date: v.date, label: v.dateLabel, type: 'Visit', icon: ClipboardList, color: '#0891b2', bg: 'rgba(8,145,178,0.10)', title: `OPD Visit — ${v.dept}`, detail: `${v.doctor} · ${v.complaint}` })),
-    ...patient.prescriptions.map((p) => ({ date: '2026-06-20', label: p.date, type: 'Prescription', icon: Pill, color: '#7c3aed', bg: 'rgba(124,58,237,0.10)', title: `Prescribed — ${p.drug}`, detail: `${p.dosage} · ${p.duration} · ${p.doctor}` })),
-    ...patient.labs.map((l) => ({ date: '2026-06-20', label: l.date, type: 'Lab', icon: FlaskConical, color: '#d9a441', bg: 'rgba(217,164,65,0.10)', title: `Lab — ${l.test}`, detail: `Result: ${l.result} (Normal: ${l.normal}) · ${l.status}` })),
-    ...patient.admissions.map((a) => ({ date: a.admittedOn, label: fmtDate(a.admittedOn), type: 'IPD Admission', icon: BedDouble, color: '#C2410C', bg: 'rgba(194,65,12,0.10)', title: `Admitted — ${a.ward} Ward · ${a.ipNo}`, detail: `${a.admittingDoctor} · Status: ${a.status}${a.dischargedOn ? ' · Discharged: ' + fmtDate(a.dischargedOn) : ''}` })),
+    ...patient.visits.map((v) => ({ date: v.date, label: ensureDmyDate(v.date || v.dateLabel), time: v.time || '09:30 AM', type: 'Visit', icon: ClipboardList, color: '#0891b2', bg: 'rgba(8,145,178,0.10)', title: `OPD Visit — ${v.dept}`, detail: `${v.doctor} · ${v.complaint}` })),
+    ...patient.prescriptions.map((p) => ({ date: p.date && p.date.includes('/') ? p.date.split('/').reverse().join('-') : '2026-06-20', label: ensureDmyDate(p.date), time: p.time || '11:15 AM', type: 'Prescription', icon: Pill, color: '#7c3aed', bg: 'rgba(124,58,237,0.10)', title: `Prescribed — ${p.drug}`, detail: `${p.dosage} · ${p.duration} · ${p.doctor}` })),
+    ...patient.labs.map((l) => ({ date: l.date && l.date.includes('/') ? l.date.split('/').reverse().join('-') : '2026-06-20', label: ensureDmyDate(l.date), time: l.time || '02:30 PM', type: 'Lab', icon: FlaskConical, color: '#d9a441', bg: 'rgba(217,164,65,0.10)', title: `Lab — ${l.test}`, detail: `Result: ${l.result} (Normal: ${l.normal}) · ${l.status}` })),
+    ...patient.admissions.map((a) => ({ date: a.admittedOn, label: ensureDmyDate(a.admittedOn), time: a.admittedTime || '04:45 PM', type: 'IPD Admission', icon: BedDouble, color: '#C2410C', bg: 'rgba(194,65,12,0.10)', title: `Admitted — ${a.ward} Ward · ${a.ipNo}`, detail: `${a.admittingDoctor} · Status: ${a.status}${a.dischargedOn ? ' · Discharged: ' + ensureDmyDate(a.dischargedOn) : ''}` })),
   ].sort((a, b) => b.date.localeCompare(a.date));
 
   const printPatient = () => {
@@ -622,13 +642,14 @@ export default function PatientDetail() {
               </div>
             ) : (
               <div style={{ position: 'relative' }}>
-                <div style={{ position: 'absolute', left: 119, top: 0, bottom: 0, width: 2, background: `1px solid ${C.border}`, opacity: 0.3 }} />
+                <div style={{ position: 'absolute', left: 119, top: 0, bottom: 0, width: 2, background: 'var(--border-strong, #ccc)', opacity: 0.6 }} />
                 {timeline.map((ti, i) => {
                   const Icon = ti.icon;
                   return (
                     <div key={i} style={{ display: 'flex', gap: 0, marginBottom: 4, alignItems: 'flex-start' }}>
                       <div style={{ width: 110, flexShrink: 0, textAlign: 'right', paddingRight: 16, paddingTop: 14 }}>
                         <div style={{ fontSize: 11, fontWeight: 600, color: C.text }}>{ti.label}</div>
+                        <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{ti.time}</div>
                       </div>
                       <div style={{ width: 20, flexShrink: 0, display: 'flex', justifyContent: 'center', paddingTop: 18, position: 'relative', zIndex: 1 }}>
                         <div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid white', background: ti.color, boxShadow: `0 0 0 2px ${ti.color}44` }} />

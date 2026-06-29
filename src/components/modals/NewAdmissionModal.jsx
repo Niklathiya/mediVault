@@ -56,7 +56,7 @@ export default function NewAdmissionModal({ open, onClose }) {
     setSaving(true);
     try {
       const today = new Date().toISOString().slice(0, 10);
-      const time  = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+      const time  = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
       const words = (pt.name || '').trim().split(' ').filter(Boolean);
       const initials = words.map((w) => w[0]).join('').slice(0, 2).toUpperCase();
       const allergyStr = Array.isArray(pt.allergies) ? pt.allergies.join(', ') : (pt.allergies || '');

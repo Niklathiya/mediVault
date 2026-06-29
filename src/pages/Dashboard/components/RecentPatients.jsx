@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ArrowRight, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -8,6 +9,51 @@ const PATIENTS = [
   { id: 'PT-0125', name: 'Anjali Shah', ageSex: '28F', initials: 'AS', hasAllergy: true },
   { id: 'PT-0124', name: 'Mohan Trivedi', ageSex: '45M', initials: 'MT', hasAllergy: false },
 ];
+
+function Tooltip({ text, children }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div
+      style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
+      onMouseEnter={(e) => { e.stopPropagation(); setVisible(true); }}
+      onMouseLeave={(e) => { e.stopPropagation(); setVisible(false); }}
+    >
+      {children}
+      {visible && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '100%',
+            right: 0,
+            transform: 'translateY(-6px)',
+            background: 'var(--fg-on-light, #0f172a)',
+            color: 'var(--surface, #ffffff)',
+            padding: '6px 10px',
+            borderRadius: 6,
+            fontSize: 11,
+            fontWeight: 500,
+            whiteSpace: 'nowrap',
+            zIndex: 1000,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            pointerEvents: 'none',
+          }}
+        >
+          {text}
+          <div
+            style={{
+              position: 'absolute',
+              top: '100%',
+              right: 10,
+              borderWidth: 5,
+              borderStyle: 'solid',
+              borderColor: 'var(--fg-on-light, #0f172a) transparent transparent transparent',
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function RecentPatients() {
   const navigate = useNavigate();
@@ -91,7 +137,11 @@ export default function RecentPatients() {
                 {p.id} · {p.ageSex}
               </div>
             </div>
-            {p.hasAllergy && <AlertTriangle size={14} color="#d95050" />}
+            {p.hasAllergy && (
+              <Tooltip text="Has allergy">
+                <AlertTriangle size={14} color="#d95050" style={{ cursor: 'help' }} onClick={(e) => e.stopPropagation()} />
+              </Tooltip>
+            )}
           </div>
         ))}
       </div>

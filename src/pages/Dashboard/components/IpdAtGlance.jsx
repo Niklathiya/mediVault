@@ -42,7 +42,7 @@ const IPD_KPIS = [
   { label: 'Currently admitted', value: 14, sub: 'patients in-ward', color: '#0891b2' },
   {
     label: 'Avg. length of stay',
-    value: '4.8',
+    value: '5',
     sub: 'days (all-time)',
     color: 'var(--fg-on-light)',
   },

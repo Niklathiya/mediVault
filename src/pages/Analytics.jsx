@@ -142,7 +142,6 @@ const BILL_MONTHLY = {
   '2026-02': { paid: 17, partial: 5, pending: 2 },
   '2026-01': { paid: 13, partial: 3, pending: 2 },
 };
-const DEFAULT_BILLS = { paid: 9, partial: 2, pending: 1 };
 
 // ── 6-month trend (fixed window Jan–Jun 2026) ────────────────────────────────
 const TREND = [
@@ -224,16 +223,112 @@ function HBar({ label, count, maxCount, color, suffix }) {
   );
 }
 
+function getMonthsInRange(start, end) {
+  if (!start || !end) return [];
+  const res = [];
+  let curr = new Date(start);
+  const last = new Date(end);
+  while (curr <= last) {
+    const ym = `${curr.getFullYear()}-${String(curr.getMonth() + 1).padStart(2, '0')}`;
+    if (!res.includes(ym)) res.push(ym);
+    curr.setMonth(curr.getMonth() + 1);
+  }
+  const endYm = `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, '0')}`;
+  if (!res.includes(endYm)) res.push(endYm);
+  return res;
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function Analytics() {
   const [month, setMonth] = useState(MONTH_OPTIONS[0].key);
   const [dropOpen, setDropOpen] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
-  const monthLabel = MONTH_OPTIONS.find((o) => o.key === month)?.label ?? '';
-  const kpi = MONTHLY_KPI[month] ?? DEFAULT_KPI;
-  const wards = WARD_MONTHLY[month] ?? DEFAULT_WARDS;
-  const diags = DIAG_MONTHLY[month] ?? DEFAULT_DIAGS;
-  const bills = BILL_MONTHLY[month] ?? DEFAULT_BILLS;
+  const fmtStr = (dStr) => {
+    if (!dStr) return '';
+    const [y, m, d] = dStr.split('-');
+    return `${d}/${m}/${y}`;
+  };
+
+  const monthLabel =
+    startDate && endDate
+      ? `${fmtStr(startDate)} - ${fmtStr(endDate)}`
+      : (MONTH_OPTIONS.find((o) => o.key === month)?.label ?? '');
+
+  const activeMonths = startDate && endDate ? getMonthsInRange(startDate, endDate) : [month];
+
+  // Aggregate KPI
+  let kpi = { patients: 0, admissions: 0, discharged: 0, avgLos: 0, revenue: 0, outstanding: 0 };
+  let kpiCount = 0;
+  let wardCounts = {};
+  let diagCounts = {};
+  let bills = { paid: 0, partial: 0, pending: 0 };
+
+  activeMonths.forEach((m) => {
+    const data = MONTHLY_KPI[m];
+    if (data) {
+      kpi.patients += data.patients;
+      kpi.admissions += data.admissions;
+      kpi.discharged += data.discharged;
+      kpi.avgLos += parseFloat(data.avgLos);
+
+      const revVal =
+        parseFloat(data.revenue.replace(/[^0-9.]/g, '')) *
+        (data.revenue.includes('L') ? 100000 : 1000);
+      kpi.revenue += revVal;
+
+      const outVal =
+        parseFloat(data.outstanding.replace(/[^0-9.]/g, '')) *
+        (data.outstanding.includes('L') ? 100000 : 1000);
+      kpi.outstanding += outVal;
+
+      kpiCount++;
+    }
+
+    const wList = WARD_MONTHLY[m];
+    if (wList) {
+      wList.forEach((w) => {
+        wardCounts[w.ward] = (wardCounts[w.ward] || 0) + w.admissions;
+      });
+    }
+
+    const dList = DIAG_MONTHLY[m];
+    if (dList) {
+      dList.forEach((d) => {
+        diagCounts[d.name] = (diagCounts[d.name] || 0) + d.count;
+      });
+    }
+
+    const bData = BILL_MONTHLY[m];
+    if (bData) {
+      bills.paid += bData.paid;
+      bills.partial += bData.partial;
+      bills.pending += bData.pending;
+    }
+  });
+
+  if (kpiCount === 0) {
+    kpi = DEFAULT_KPI;
+  } else {
+    kpi.avgLos = String(Math.round(kpi.avgLos / kpiCount));
+    kpi.revenue = `₹${(kpi.revenue / 100000).toFixed(1)}L`;
+    kpi.outstanding = `₹${Math.round(kpi.outstanding / 1000)}K`;
+  }
+
+  const wards =
+    Object.keys(wardCounts).length > 0
+      ? Object.entries(wardCounts)
+          .map(([ward, admissions]) => ({ ward, admissions }))
+          .sort((a, b) => b.admissions - a.admissions)
+      : DEFAULT_WARDS;
+
+  const diags =
+    Object.keys(diagCounts).length > 0
+      ? Object.entries(diagCounts)
+          .map(([name, count]) => ({ name, count }))
+          .sort((a, b) => b.count - a.count)
+      : DEFAULT_DIAGS;
 
   const wardMax = Math.max(...wards.map((w) => w.admissions));
   const diagMax = Math.max(...diags.map((d) => d.count));
@@ -286,51 +381,94 @@ export default function Analytics() {
           </p>
         </div>
 
-        {/* Month selector */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          <span style={{ fontSize: 13, color: 'var(--fg-on-light-muted)', fontWeight: 500 }}>
-            Select month:
-          </span>
-          <div style={{ position: 'relative' }}>
-            <select
-              value={month}
-              onMouseDown={() => setDropOpen((o) => !o)}
-              onChange={(e) => {
-                setMonth(e.target.value);
-                setDropOpen(false);
-              }}
-              onBlur={() => setDropOpen(false)}
+        {/* Date range and Month selectors */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 13, color: 'var(--fg-on-light-muted)', fontWeight: 500 }}>
+              Range:
+            </span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
               style={{
-                padding: '9px 36px 9px 14px',
+                padding: '8px 12px',
                 border: '1px solid var(--border-ui)',
                 borderRadius: 8,
                 background: 'var(--surface)',
                 fontSize: 13,
-                fontWeight: 500,
                 color: 'var(--fg-on-light)',
                 outline: 'none',
                 cursor: 'pointer',
-                appearance: 'none',
-              }}
-            >
-              {MONTH_OPTIONS.map((o) => (
-                <option key={o.key} value={o.key}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              size={13}
-              style={{
-                position: 'absolute',
-                right: 10,
-                top: '50%',
-                transform: `translateY(-50%) rotate(${dropOpen ? '180deg' : '0deg'})`,
-                transition: 'transform 180ms ease',
-                color: 'var(--fg-on-light-muted)',
-                pointerEvents: 'none',
+                fontFamily: 'inherit',
               }}
             />
+            <span style={{ fontSize: 13, color: 'var(--fg-on-light-muted)' }}>to</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              style={{
+                padding: '8px 12px',
+                border: '1px solid var(--border-ui)',
+                borderRadius: 8,
+                background: 'var(--surface)',
+                fontSize: 13,
+                color: 'var(--fg-on-light)',
+                outline: 'none',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 13, color: 'var(--fg-on-light-muted)', fontWeight: 500 }}>
+              Select month:
+            </span>
+            <div style={{ position: 'relative' }}>
+              <select
+                value={month}
+                onMouseDown={() => setDropOpen((o) => !o)}
+                onChange={(e) => {
+                  setMonth(e.target.value);
+                  setDropOpen(false);
+                  setStartDate(''); // clear specific date range since they manually picked a month
+                  setEndDate('');
+                }}
+                onBlur={() => setDropOpen(false)}
+                style={{
+                  padding: '9px 36px 9px 14px',
+                  border: '1px solid var(--border-ui)',
+                  borderRadius: 8,
+                  background: 'var(--surface)',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: 'var(--fg-on-light)',
+                  outline: 'none',
+                  cursor: 'pointer',
+                  appearance: 'none',
+                }}
+              >
+                {MONTH_OPTIONS.map((o) => (
+                  <option key={o.key} value={o.key}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={13}
+                style={{
+                  position: 'absolute',
+                  right: 10,
+                  top: '50%',
+                  transform: `translateY(-50%) rotate(${dropOpen ? '180deg' : '0deg'})`,
+                  transition: 'transform 180ms ease',
+                  color: 'var(--fg-on-light-muted)',
+                  pointerEvents: 'none',
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>

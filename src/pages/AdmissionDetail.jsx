@@ -17,8 +17,7 @@ const TODAY = new Date().toISOString().slice(0, 10);
 const fmtDate = (iso) => {
   if (!iso) return '—';
   const [y, m, d] = iso.split('-');
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return `${d} ${months[+m - 1]} ${y}`;
+  return `${d}/${m}/${y}`;
 };
 
 const daysCount = (admittedOn, dischargedOn) =>
@@ -400,7 +399,7 @@ export default function AdmissionDetail() {
           </button>
           <button
             onClick={() => {
-              const now = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+              const now = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
               if (isAdmitted) {
                 dischargeAdmission(id, TODAY, now).then(() =>
                   setAdm((prev) => ({ ...prev, status: 'discharged', dischargedOn: TODAY, dischargedTime: now }))

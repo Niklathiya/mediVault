@@ -9,7 +9,7 @@ const TODAY  = new Date().toISOString().slice(0, 10);
 function isoToDisplay(iso) {
   if (!iso) return '';
   const [y, m, d] = iso.split('-');
-  return `${+d} ${MONTHS[+m - 1]} ${y}`;
+  return `${d}/${m}/${y}`;
 }
 
 const empty = { date: TODAY, doctor: '', dept: '', complaint: '', diagnosis: '', treatment: '', notes: '' };
@@ -52,6 +52,7 @@ export default function AddVisitModal({ open, patientId, onAdd, onClose }) {
         diagnosis: form.diagnosis,
         treatment: form.treatment,
         notes:     form.notes,
+        time:      new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
       };
       const ref = await addPatientSubItem(patientId, 'visits', visitData);
       onAdd({ id: ref.id, ...visitData });
