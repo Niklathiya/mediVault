@@ -45,19 +45,37 @@ export async function addAdmission(formData) {
   };
 
   await setDoc(doc(db, COL, newId), data);
+  if (data.mrNo) {
+    await setDoc(doc(db, 'patients', data.mrNo, 'admissions', newId), data);
+  }
   return newId;
 }
 
 /** Update any fields on the admission doc */
 export async function updateAdmission(id, updates) {
   await updateDoc(doc(db, COL, id), updates);
+  const snap = await getDoc(doc(db, COL, id));
+  if (snap.exists()) {
+    const data = snap.data();
+    if (data.mrNo) {
+      await updateDoc(doc(db, 'patients', data.mrNo, 'admissions', id), updates);
+    }
+  }
 }
 
 /** Discharge: set status, dischargedOn, dischargedTime */
 export async function dischargeAdmission(id, dischargedOn, dischargedTime) {
-  await updateDoc(doc(db, COL, id), {
+  const updates = {
     status: 'discharged',
     dischargedOn,
     dischargedTime: dischargedTime || '—',
-  });
+  };
+  await updateDoc(doc(db, COL, id), updates);
+  const snap = await getDoc(doc(db, COL, id));
+  if (snap.exists()) {
+    const data = snap.data();
+    if (data.mrNo) {
+      await updateDoc(doc(db, 'patients', data.mrNo, 'admissions', id), updates);
+    }
+  }
 }

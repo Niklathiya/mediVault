@@ -7,6 +7,7 @@ import AddPrescriptionModal from '../components/modals/AddPrescriptionModal.jsx'
 import AddLabModal          from '../components/modals/AddLabModal.jsx';
 import RecordVitalsModal    from '../components/modals/RecordVitalsModal.jsx';
 import AddDocumentModal     from '../components/modals/AddDocumentModal.jsx';
+import NewAdmissionModal    from '../components/modals/NewAdmissionModal.jsx';
 import {
   ArrowLeft, FileText, ClipboardList, Pill, FlaskConical,
   Activity, Folder, Clock, Receipt, BedDouble, AlertTriangle,
@@ -149,9 +150,17 @@ export default function PatientDetail() {
   const [labModal, setLabModal]               = useState(false);
   const [vitalsModal, setVitalsModal]         = useState(false);
   const [documentModal, setDocumentModal]     = useState(false);
+  const [admissionModal, setAdmissionModal]   = useState(false);
+
+  // Adjust state during render when id changes to avoid synchronous setState inside useEffect
+  const [prevId, setPrevId] = useState(id);
+  if (id !== prevId) {
+    setPrevId(id);
+    setLoading(true);
+    setPatient(null);
+  }
 
   useEffect(() => {
-    setLoading(true);
     getPatientFull(id).then((data) => {
       setPatient(data);
       setLoading(false);
@@ -706,8 +715,11 @@ export default function PatientDetail() {
                     <div style={{ color: '#15803d', fontWeight: 500 }}>{fmt(b.paid)}</div>
                     <div><span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 10, background: statusBg, color: statusColor, fontWeight: 500 }}>{statusLabel}</span></div>
                     <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                      <ActionBtn icon={Pencil} title="Edit" />
-                      <button style={{ background: C.primary, color: 'white', border: 'none', padding: '5px 10px', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <ActionBtn icon={Pencil} title="Edit" onClick={() => navigate('/billing', { state: { searchQuery: b.id, openBillId: b.id, mode: 'edit' } })} />
+                      <button
+                        onClick={() => navigate('/billing', { state: { searchQuery: b.id, openBillId: b.id, mode: 'view' } })}
+                        style={{ background: C.primary, color: 'white', border: 'none', padding: '5px 10px', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
                         <Eye size={11} />
                       </button>
                     </div>
@@ -726,7 +738,7 @@ export default function PatientDetail() {
                 <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>IPD Admission History</div>
                 <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>All in-patient admissions for {patient.name}</div>
               </div>
-              <button className="btn-primary" style={{ fontSize: 13 }}><Plus size={14} /> Admit patient</button>
+              <button className="btn-primary" style={{ fontSize: 13 }} onClick={() => setAdmissionModal(true)}><Plus size={14} /> Admit patient</button>
             </div>
             {patient.admissions.length === 0 ? (
               <div style={{ textAlign: 'center', padding: 64, color: C.muted, background: C.surface, border: `1px dashed ${C.border}`, borderRadius: 12 }}>
@@ -806,6 +818,15 @@ export default function PatientDetail() {
         patientId={id}
         onAdd={(item) => addItem('documents', item)}
         onClose={() => setDocumentModal(false)}
+      />
+      <NewAdmissionModal
+        open={admissionModal}
+        onClose={() => {
+          setAdmissionModal(false);
+          getPatientFull(id).then((data) => {
+            if (data) setPatient(data);
+          });
+        }}
       />
 
       {/* Edit modal */}
