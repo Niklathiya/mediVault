@@ -1,5 +1,6 @@
 import { UserPlus, BedDouble, Stethoscope, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useRBAC } from '../../../context/RBACContext';
 
 const STEPS = [
   {
@@ -41,6 +42,14 @@ const STEPS = [
 
 export default function PatientJourney() {
   const navigate = useNavigate();
+  const { canRegisterPatient, canAccess } = useRBAC();
+  const visibleSteps = STEPS.filter((step) => {
+    if (step.id === 1) return canRegisterPatient;
+    if (step.path === '/admissions') return canAccess('admissions');
+    if (step.path === '/billing') return canAccess('billing');
+    if (step.path === '/patients') return canAccess('patients');
+    return true;
+  });
   return (
     <div
       style={{
@@ -64,9 +73,9 @@ export default function PatientJourney() {
         Patient journey — how the system works
       </div>
       <div style={{ display: 'flex', alignItems: 'stretch' }}>
-        {STEPS.map((step, i) => {
+        {visibleSteps.map((step, i) => {
           const Icon = step.icon;
-          const isLast = i === STEPS.length - 1;
+          const isLast = i === visibleSteps.length - 1;
           return (
             <div key={step.id} style={{ display: 'contents' }}>
               <div

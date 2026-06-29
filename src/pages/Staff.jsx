@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
 import { subscribeStaffByRole, addStaff, updateStaff, deleteStaff } from '../firebase/services/staffService.js';
+import { useRBAC } from '../context/RBACContext';
 import {
   Stethoscope,
   HeartPulse,
@@ -225,9 +226,8 @@ function SelectField({ value, onChange, children }) {
   );
 }
 
-function StaffCard({ m, tab, onEdit, onDelete }) {
+function StaffCard({ m, tab, onEdit, onDelete, canManage }) {
   const s = STATUS_STYLE[m.status] ?? STATUS_STYLE.Active;
-  const isSupport = tab === 'support';
 
   return (
     <div
@@ -343,7 +343,8 @@ function StaffCard({ m, tab, onEdit, onDelete }) {
         {m.joiningDate && <ContactRow icon={Calendar}>Joined: {m.joiningDate}</ContactRow>}
       </div>
 
-      {/* Action buttons */}
+      {/* Action buttons — only visible to admin (canManage) */}
+      {canManage && (
       <div
         style={{
           display: 'flex',
@@ -365,8 +366,8 @@ function StaffCard({ m, tab, onEdit, onDelete }) {
             alignItems: 'center',
             justifyContent: 'center',
             gap: 5,
-            padding: isSupport ? '6px' : '7px',
-            fontSize: isSupport ? 11 : 12,
+            padding: '7px',
+            fontSize: 12,
             fontFamily: 'inherit',
             color: 'var(--fg-on-light)',
             fontWeight: 500,
@@ -375,7 +376,7 @@ function StaffCard({ m, tab, onEdit, onDelete }) {
           onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-subtle)')}
           onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
         >
-          <Pencil size={isSupport ? 10 : 11} /> Edit
+          <Pencil size={11} /> Edit
         </button>
         <button
           onClick={() => onDelete(m.id)}
@@ -387,16 +388,17 @@ function StaffCard({ m, tab, onEdit, onDelete }) {
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: isSupport ? '6px 10px' : '7px 12px',
+            padding: '7px 12px',
             color: '#d95050',
             transition: 'background 120ms',
           }}
           onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(217,80,80,0.06)')}
           onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
         >
-          <Trash2 size={isSupport ? 11 : 12} />
+          <Trash2 size={12} />
         </button>
       </div>
+      )}
     </div>
   );
 }
@@ -441,7 +443,7 @@ function StaffModal({ tab, member, onClose, onSave }) {
     if (member) {
       return {
         ...member,
-        joiningDate: member.joiningDate ? ensureIsoDate(member.joiningDate) : ''
+        joiningDate: member.joiningDate ? formatDmyDate(ensureIsoDate(member.joiningDate)) : '',
       };
     }
     return { ...EMPTY_FORM[tab] };
@@ -783,6 +785,7 @@ function StaffModal({ tab, member, onClose, onSave }) {
 
 export default function Staff() {
   const location = useLocation();
+  const { canManageStaff } = useRBAC();
   const tab = TABS.find((t) => location.pathname.endsWith(t.key))?.key ?? 'doctors';
 
   const [members, setMembers] = useState([]);
@@ -847,15 +850,17 @@ export default function Staff() {
             </span>
           </h1>
         </div>
-        <button className="btn-primary" onClick={openAdd}>
-          <Plus size={16} /> {meta.addLabel}
-        </button>
+        {canManageStaff && (
+          <button className="btn-primary" onClick={openAdd}>
+            <Plus size={16} /> {meta.addLabel}
+          </button>
+        )}
       </div>
 
       {/* Staff grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
         {members.map((m) => (
-          <StaffCard key={m.id} m={m} tab={tab} onEdit={openEdit} onDelete={deleteMember} />
+          <StaffCard key={m.id} m={m} tab={tab} onEdit={openEdit} onDelete={deleteMember} canManage={canManageStaff} />
         ))}
         {members.length === 0 && (
           <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '48px 0', color: 'var(--fg-on-light-muted)', fontSize: 14 }}>

@@ -1,6 +1,8 @@
 import { Users, FlaskConical, BedDouble, IndianRupee } from 'lucide-react';
+import { useRBAC } from '../../../context/RBACContext';
 
 export default function KpiGrid() {
+  const { canSeeDashboardIpd, canSeeDashboardRevenue } = useRBAC();
   const KPIs = [
     {
       label: 'Active patients',
@@ -22,7 +24,7 @@ export default function KpiGrid() {
       iconColor: '#d9a441',
       icon: FlaskConical,
     },
-    {
+    canSeeDashboardIpd && {
       label: 'IPD admissions',
       value: 14,
       badge: 'Currently active',
@@ -32,7 +34,7 @@ export default function KpiGrid() {
       iconColor: '#0891b2',
       icon: BedDouble,
     },
-    {
+    canSeeDashboardRevenue && {
       label: 'Revenue this month',
       value: '₹3.4L',
       badge: '+21%',
@@ -42,10 +44,10 @@ export default function KpiGrid() {
       iconColor: '#15803d',
       icon: IndianRupee,
     },
-  ];
+  ].filter(Boolean);
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${KPIs.length}, 1fr)`, gap: 16 }}>
       {KPIs.map((kpi) => {
         const Icon = kpi.icon;
         return (

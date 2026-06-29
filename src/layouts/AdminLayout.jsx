@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
-import { Search, X, Settings, Moon, Sun } from 'lucide-react';
+import { Search, X, Settings, Moon, Sun, ShieldCheck } from 'lucide-react';
 import Sidebar from '../components/sidebar/Sidebar';
 import { useDark } from '../context/DarkModeContext';
+import { ROLE_OPTIONS, useRBAC } from '../context/RBACContext';
 import RegisterPatientModal from '../components/modals/RegisterPatientModal';
 import NewAdmissionModal from '../components/modals/NewAdmissionModal';
 
@@ -45,6 +46,7 @@ function runSearch(q) {
 
 export default function AdminLayout() {
   const { dark, toggle } = useDark();
+  const { role, setRole, canRegisterPatient, canManageAdmissions, canAccess } = useRBAC();
   const navigate = useNavigate();
 
   const [query, setQuery] = useState('');
@@ -71,12 +73,24 @@ export default function AdminLayout() {
   const closeSearch = (path) => {
     setQuery('');
     setSearchOpen(false);
-    if (path) navigate(path);
+    if (!path) return;
+    if (path.startsWith('/settings') && !canAccess('settings')) return;
+    if (path.startsWith('/billing') && !canAccess('billing')) return;
+    if (path.startsWith('/activity') && !canAccess('activity')) return;
+    if (path.startsWith('/analytics') && !canAccess('analytics')) return;
+    if (path.startsWith('/staff') && !canAccess('staff')) return;
+    if (path.startsWith('/admissions') && !canAccess('admissions')) return;
+    if (path.startsWith('/patients') && !canAccess('patients')) return;
+    navigate(path);
   };
 
   const outletCtx = {
-    openRegisterModal: () => setShowRegister(true),
-    openNewAdmissionModal: () => setShowNewAdmission(true),
+    openRegisterModal: () => {
+      if (canRegisterPatient) setShowRegister(true);
+    },
+    openNewAdmissionModal: () => {
+      if (canManageAdmissions) setShowNewAdmission(true);
+    },
   };
 
   return (
@@ -225,6 +239,55 @@ export default function AdminLayout() {
 
           {/* Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+            <label
+              title="Switch RBAC role"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                border: '1px solid var(--border-ui)',
+                borderRadius: 8,
+                padding: '0 8px 0 10px',
+                height: 34,
+                background: 'var(--bg-canvas)',
+                color: 'var(--fg-on-light-muted)',
+                cursor: 'pointer',
+              }}
+            >
+              <ShieldCheck size={14} />
+              <select
+                aria-label="RBAC role"
+                value={role}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setRole(v);
+                  setTimeout(() => e.target.blur(), 0);
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.outline = 'none';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+                style={{
+                  border: 'none',
+                  outline: 'none',
+                  background: 'transparent',
+                  color: 'var(--fg-on-light)',
+                  fontFamily: 'inherit',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  minWidth: 148,
+                  paddingRight: 4,
+                }}
+              >
+                {ROLE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
             <button
               onClick={toggle}
               title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -246,17 +309,23 @@ export default function AdminLayout() {
             </button>
 
             <button
-              onClick={() => navigate('/settings')}
+              onClick={() => {
+                if (canAccess('settings')) navigate('/settings');
+              }}
+              title={canAccess('settings') ? 'Settings' : 'Settings restricted for this role'}
               style={{
                 background: 'transparent',
                 border: '1px solid var(--border-ui)',
                 borderRadius: 8,
                 padding: '8px',
-                cursor: 'pointer',
+                cursor: canAccess('settings') ? 'pointer' : 'not-allowed',
                 display: 'flex',
                 alignItems: 'center',
-                color: 'var(--fg-on-light-muted)',
+                color: canAccess('settings')
+                  ? 'var(--fg-on-light-muted)'
+                  : 'rgba(148,163,184,0.55)',
                 transition: 'background 120ms',
+                opacity: canAccess('settings') ? 1 : 0.55,
               }}
               onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-subtle)')}
               onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}

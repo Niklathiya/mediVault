@@ -5,6 +5,7 @@ import { Plus, AlertTriangle, X, Pencil, Archive, Check } from 'lucide-react';
 import CustomSelect from '../components/ui/CustomSelect';
 import MultiSelect from '../components/ui/MultiSelect';
 import { subscribePatients, updatePatient, toggleArchivePatient } from '../firebase/services/patientService.js';
+import { useRBAC } from '../context/RBACContext';
 
 const STATUS_BADGE = {
   active:     { label: 'Active',     color: '#15803d', bg: 'rgba(78,179,116,0.12)' },
@@ -102,13 +103,14 @@ export default function Patients() {
   const navigate = useNavigate();
   const { openRegisterModal } = useOutletContext();
   const location = useLocation();
+  const { canRegisterPatient, canEditPatientList } = useRBAC();
 
   useEffect(() => {
-    if (location.state?.openRegister) {
+    if (location.state?.openRegister && canRegisterPatient) {
       openRegisterModal();
       navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [location.state, openRegisterModal, navigate]);
+  }, [location.state, openRegisterModal, navigate, canRegisterPatient]);
 
   const [patients, setPatients] = useState([]);
   const [loading, setLoading]   = useState(true);
@@ -233,9 +235,11 @@ export default function Patients() {
             Patients
           </h1>
         </div>
-        <button className="btn-primary" onClick={openRegisterModal}>
-          <Plus size={16} /> Register patient
-        </button>
+        {canRegisterPatient && (
+          <button className="btn-primary" onClick={openRegisterModal}>
+            <Plus size={16} /> Register patient
+          </button>
+        )}
       </div>
 
       {/* Filters */}
@@ -414,20 +418,24 @@ export default function Patients() {
                 </div>
 
                 <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                  <button
-                    title="Edit patient"
-                    onClick={(e) => { e.stopPropagation(); openEdit(p); }}
-                    style={iconBtn}
-                  >
-                    <Pencil size={14} />
-                  </button>
-                  <button
-                    title={p.status === 'archived' ? 'Unarchive' : 'Archive'}
-                    onClick={(e) => { e.stopPropagation(); archivePatient(p.id); }}
-                    style={{ ...iconBtn, color: p.status === 'archived' ? '#d9a441' : 'var(--fg-on-light)' }}
-                  >
-                    <Archive size={14} />
-                  </button>
+                  {canEditPatientList && (
+                    <>
+                      <button
+                        title="Edit patient"
+                        onClick={(e) => { e.stopPropagation(); openEdit(p); }}
+                        style={iconBtn}
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        title={p.status === 'archived' ? 'Unarchive' : 'Archive'}
+                        onClick={(e) => { e.stopPropagation(); archivePatient(p.id); }}
+                        style={{ ...iconBtn, color: p.status === 'archived' ? '#d9a441' : 'var(--fg-on-light)' }}
+                      >
+                        <Archive size={14} />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             );
