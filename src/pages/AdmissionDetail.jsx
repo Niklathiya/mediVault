@@ -717,15 +717,671 @@ export default function AdmissionDetail() {
 
   const printAdmission = () => {
     const w = window.open('', '_blank');
-    w.document
-      .write(`<html><head><title>${adm.ipNo} Case File</title></head><body style="font-family:sans-serif;padding:24px;">
-      <h2 style="margin:0">${adm.patientName}</h2>
-      <p style="color:#666">${adm.ipNo} · ${adm.ward} · Bed ${adm.bedNo} · Admitted ${fmtDate(adm.admittedOn)}</p>
-      <p><b>Doctor:</b> ${adm.admittingDoctor} | <b>Diagnosis:</b> ${adm.provisionalDx}</p>
-      <p><b>Reason:</b> ${adm.reason} | <b>Status:</b> ${adm.status}</p>
-      <hr/>
-      <p><b>Vitals at triage:</b> BP ${adm.triage.bp} mmHg · Pulse ${adm.triage.pulse}/min · SpO₂ ${adm.triage.spo2}% · Temp ${adm.triage.temp}°F</p>
-      </body></html>`);
+
+    const renderSection = (title, content) => `
+      <div class="section-container">
+        <div class="section-title">${title}</div>
+        ${content}
+      </div>
+    `;
+
+    const consentHtml = `
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Consent Status</div>
+          <div class="card-content">
+            ${adm.consent ? '<span class="badge badge-success">Consent Obtained</span>' : '<span class="badge badge-danger">Pending</span>'}
+            <div style="margin-top: 8px;">
+              <strong>Patient Name:</strong> ${adm.patientName}<br/>
+              <strong>Signed On:</strong> ${fmtDate(adm.admittedOn)}<br/>
+              <strong>Witnessed By:</strong> ${adm.admittingDoctor}
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Consent Acknowledgements</div>
+          <div class="card-content" style="font-size: 11px; color: #475569;">
+            ✓ Voluntary consent for treatment & minor procedures<br/>
+            ✓ Responsibility for all bills & vacating room on discharge<br/>
+            ✓ Consent for photography/video (medical/educational)<br/>
+            ✓ Permission to access medical records<br/>
+            ✓ Commitment to abide by hospital rules & regulations
+          </div>
+        </div>
+      </div>
+    `;
+
+    const pastHistoryHtml = `
+      <div class="card" style="border-left: 4px solid ${adm.allergies ? '#d95050' : '#16a34a'};">
+        <div class="card-title" style="color: ${adm.allergies ? '#b91c1c' : '#15803d'};">Allergies</div>
+        <div class="card-content"><strong>${adm.allergies || 'No known drug or food allergies'}</strong></div>
+      </div>
+      <div class="grid-2">
+        ${[
+          ['Diabetes', cf.pastHistoryDetails?.diabetes ?? 'None'],
+          ['Hypertension', cf.pastHistoryDetails?.hypertension ?? 'None'],
+          ['Cardiac disease', cf.pastHistoryDetails?.cardiac ?? 'None'],
+          ['Previous surgeries', cf.pastHistoryDetails?.surgeries ?? 'None'],
+          ['Family history', cf.pastHistoryDetails?.family ?? 'None'],
+          ['Smoking / Alcohol', cf.pastHistoryDetails?.smokingAlcohol ?? 'None'],
+        ]
+          .map(
+            ([l, v]) => `
+          <div class="card">
+            <div class="card-title">${l}</div>
+            <div class="card-content">${v}</div>
+          </div>
+        `,
+          )
+          .join('')}
+      </div>
+    `;
+
+    const triageHtml = `
+      <div style="display: flex; gap: 16px; align-items: stretch; margin-bottom: 12px;">
+        <div style="flex: 1;" class="grid-2">
+          <div class="card"><div class="card-title">Chief Complaint</div><div class="card-content">${adm.reason}</div></div>
+          <div class="card"><div class="card-title">Time Triaged</div><div class="card-content">${adm.admittedTime}</div></div>
+          <div class="card"><div class="card-title">Mode of Arrival</div><div class="card-content">Walking</div></div>
+          <div class="card"><div class="card-title">Triaged By</div><div class="card-content">Nurse on duty</div></div>
+        </div>
+        <div style="width: 140px; background: ${adm.esiLevel === '1' ? '#b91c1c' : adm.esiLevel === '2' ? '#d97706' : '#0891b2'}; color: white; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+          <div style="font-size: 10px; text-transform: uppercase; font-weight: 600; opacity: 0.9;">ESI Level</div>
+          <div style="font-size: 36px; font-weight: 700; line-height: 1; margin: 4px 0;">${adm.esiLevel}</div>
+          <div style="font-size: 11px; text-transform: uppercase; font-weight: 600;">${adm.esiColor}</div>
+        </div>
+      </div>
+      <div class="grid-2" style="grid-template-columns: repeat(6, 1fr); gap: 8px;">
+        ${[
+          ['BP', adm.triage.bp, 'mmHg'],
+          ['Pulse', adm.triage.pulse, '/min'],
+          ['RR', adm.triage.rr, '/min'],
+          ['SpO₂', adm.triage.spo2, '%'],
+          ['RBS', adm.triage.rbs, 'mg/dL'],
+          ['Temp', adm.triage.temp, '°F'],
+        ]
+          .map(
+            ([l, v, u]) => `
+          <div class="card" style="text-align: center; padding: 8px 4px;">
+            <div class="card-title" style="font-size: 9px; margin-bottom: 2px;">${l}</div>
+            <div style="font-size: 14px; font-weight: 700; color: #0f172a;">${v || '—'}</div>
+            <div style="font-size: 8px; color: #64748b; margin-top: 1px;">${u}</div>
+          </div>
+        `,
+          )
+          .join('')}
+      </div>
+    `;
+
+    const hxExamHtml = `
+      <div class="card" style="margin-bottom: 12px;">
+        <div class="card-title">Presenting Complaints Details</div>
+        <div class="card-content" style="line-height: 1.6;">Patient presents with: ${adm.reason}. ${cf.presentingComplaintsExtra ?? 'Associated with fever and nausea for the past 2 days.'}</div>
+      </div>
+      <div class="grid-2">
+        ${[
+          ['CNS (Central Nervous System)', cf.systemicExam?.cns ?? 'Conscious, oriented'],
+          ['CVS (Cardiovascular System)', cf.systemicExam?.cvs ?? 'S1, S2 heard, no murmur'],
+          ['Respiratory System', cf.systemicExam?.respiratory ?? 'NVBS, clear'],
+          [
+            'Abdomen / Gastrointestinal',
+            cf.systemicExam?.abdomen ?? 'Tenderness noted, guarding present',
+          ],
+        ]
+          .map(
+            ([s, v]) => `
+          <div class="card">
+            <div class="card-title">${s}</div>
+            <div class="card-content">${v}</div>
+          </div>
+        `,
+          )
+          .join('')}
+      </div>
+    `;
+
+    const carePlanHtml = `
+      <div class="card" style="margin-bottom: 12px;">
+        <div class="card-title" style="color: #0891b2;">Provisional Diagnosis</div>
+        <div style="font-size: 15px; font-weight: 600; color: #0f172a;">${adm.provisionalDx}</div>
+      </div>
+      <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #475569; margin-bottom: 6px; letter-spacing: 0.05em;">Systemic Examination</div>
+      <div class="grid-2" style="grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px;">
+        ${[
+          ['RS', cf.carePlan?.systemicExam?.rs],
+          ['CVS', cf.carePlan?.systemicExam?.cvs],
+          ['P/A', cf.carePlan?.systemicExam?.pa],
+          ['CNS', cf.carePlan?.systemicExam?.cns],
+          ['GCS', cf.carePlan?.systemicExam?.gcs],
+          ['Pupils', cf.carePlan?.systemicExam?.pupils],
+          ['Reflexes', cf.carePlan?.systemicExam?.reflexes],
+          ['LOC', cf.carePlan?.systemicExam?.loc],
+        ]
+          .map(
+            ([l, v]) => `
+          <div class="card" style="padding: 6px 8px;">
+            <div class="card-title" style="font-size: 9px; margin-bottom: 2px;">${l}</div>
+            <div style="font-size: 12px; font-weight: 500;">${v || '—'}</div>
+          </div>
+        `,
+          )
+          .join('')}
+      </div>
+      <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #475569; margin-bottom: 6px; letter-spacing: 0.05em;">Management Plan</div>
+      <div class="grid-2">
+        ${[
+          ['Conservative management', cf.carePlan?.plan?.conservative],
+          ['Operative management', cf.carePlan?.plan?.operative],
+          ['Surgery', cf.carePlan?.plan?.surgery],
+          ['Radiology Investigation', cf.carePlan?.plan?.investigationRadiology],
+          ['Pathology Investigation', cf.carePlan?.plan?.investigationPathology],
+          ['Reference Doctor', cf.carePlan?.plan?.referenceDoctor],
+          ['Diet Plan', cf.carePlan?.plan?.diet],
+          ['Physiotherapy', cf.carePlan?.plan?.physiotherapy],
+          ['Discharge Needs', cf.carePlan?.plan?.dischargeNeeds],
+          ['Other Instructions', cf.carePlan?.plan?.other],
+        ]
+          .filter(([, v]) => v)
+          .map(
+            ([l, v]) => `
+          <div class="card">
+            <div class="card-title">${l}</div>
+            <div class="card-content">${v}</div>
+          </div>
+        `,
+          )
+          .join('')}
+      </div>
+    `;
+
+    const medsHtml = `
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 50px;">Sr</th>
+            <th>Drug Name</th>
+            <th>Dose</th>
+            <th>Route</th>
+            <th>Frequency</th>
+            <th style="width: 60px;">Qty</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${
+            (cf.medications || []).length === 0
+              ? `
+            <tr><td colspan="6" style="text-align: center; color: #64748b;">No medications recorded.</td></tr>
+          `
+              : (cf.medications || [])
+                  .map(
+                    (m) => `
+            <tr>
+              <td>${m.sr}</td>
+              <td style="font-weight: 600;">${m.drug}</td>
+              <td>${m.dose}</td>
+              <td><span class="badge" style="background:#e2e8f0; color:#334155;">${m.route}</span></td>
+              <td>${m.frequency}</td>
+              <td>${m.qty}</td>
+            </tr>
+          `,
+                  )
+                  .join('')
+          }
+        </tbody>
+      </table>
+    `;
+
+    const treatmentHtml = `
+      <table>
+        <thead>
+          <tr>
+            <th>Drug</th>
+            <th>Dose</th>
+            <th>Route</th>
+            <th>Frequency</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${
+            (cf.treatmentList || []).length === 0
+              ? `
+            <tr><td colspan="4" style="text-align: center; color: #64748b;">No treatment recorded.</td></tr>
+          `
+              : (cf.treatmentList || [])
+                  .map(
+                    (t) => `
+            <tr>
+              <td style="font-weight: 600;">${t.drug}</td>
+              <td>${t.dose}</td>
+              <td><span class="badge" style="background:#e2e8f0; color:#334155;">${t.route}</span></td>
+              <td>${t.freq}</td>
+            </tr>
+          `,
+                  )
+                  .join('')
+          }
+        </tbody>
+      </table>
+    `;
+
+    const clinicalHtml = `
+      ${
+        (cf.clinicalNotes || []).length === 0
+          ? `
+        <div class="card" style="text-align: center; color: #64748b;">No clinical notes recorded.</div>
+      `
+          : (cf.clinicalNotes || [])
+              .map(
+                (n) => `
+        <div class="card" style="border-left: 3px solid #0891b2; margin-bottom: 8px;">
+          <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; font-weight: 600; margin-bottom: 4px;">
+            <span>Date: ${n.date} · Time: ${n.time}</span>
+            <span style="color: #0891b2;">Dr. ${n.doctor}</span>
+          </div>
+          <div style="font-size: 13px; line-height: 1.5; color: #1e293b;">${n.note}</div>
+        </div>
+      `,
+              )
+              .join('')
+      }
+    `;
+
+    const nursingHtml = `
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 140px;">Date & Time</th>
+            <th>Note</th>
+            <th style="width: 140px;">Signed by</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${
+            (cf.nursingNotes || []).length === 0
+              ? `
+            <tr><td colspan="3" style="text-align: center; color: #64748b;">No nursing notes recorded.</td></tr>
+          `
+              : (cf.nursingNotes || [])
+                  .map(
+                    (n) => `
+            <tr>
+              <td style="color: #64748b;">${n.dateTime}</td>
+              <td style="line-height: 1.5;">${n.note}</td>
+              <td style="font-style: italic; color: #475569;">${n.sign}</td>
+            </tr>
+          `,
+                  )
+                  .join('')
+          }
+        </tbody>
+      </table>
+    `;
+
+    const investigationsHtml = `
+      <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #475569; margin-bottom: 6px; letter-spacing: 0.05em;">Pathology</div>
+      <table>
+        <thead>
+          <tr><th style="width: 100px;">Date</th><th style="width: 80px;">Time</th><th>Investigation</th><th>Signed by</th></tr>
+        </thead>
+        <tbody>
+          ${
+            (cf.pathology || []).length === 0
+              ? '<tr><td colspan="4" style="text-align: center; color: #64748b;">No pathology investigations.</td></tr>'
+              : (cf.pathology || [])
+                  .map(
+                    (p) => `
+            <tr><td>${p.date}</td><td>${p.time}</td><td style="font-weight:600;">${p.investigation}</td><td style="font-style:italic;">${p.sign}</td></tr>
+          `,
+                  )
+                  .join('')
+          }
+        </tbody>
+      </table>
+
+      <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #475569; margin-top: 16px; margin-bottom: 6px; letter-spacing: 0.05em;">Radiology</div>
+      <table>
+        <thead>
+          <tr><th style="width: 100px;">Date</th><th style="width: 80px;">Time</th><th>Investigation</th><th style="width: 80px;">Portable</th><th style="width: 80px;">RT-ER</th><th style="width: 100px;">Plate No.</th><th>Sign</th></tr>
+        </thead>
+        <tbody>
+          ${
+            (cf.radiology || []).length === 0
+              ? '<tr><td colspan="7" style="text-align: center; color: #64748b;">No radiology investigations.</td></tr>'
+              : (cf.radiology || [])
+                  .map(
+                    (r) => `
+            <tr>
+              <td>${r.date}</td>
+              <td>${r.time}</td>
+              <td style="font-weight:600;">${r.investigation}</td>
+              <td>${r.portable ? 'Yes' : 'No'}</td>
+              <td>${r.rtEr ? 'Yes' : 'No'}</td>
+              <td>${r.plateNo || '—'}</td>
+              <td style="font-style:italic;">${r.sign}</td>
+            </tr>
+          `,
+                  )
+                  .join('')
+          }
+        </tbody>
+      </table>
+
+      <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #475569; margin-top: 16px; margin-bottom: 6px; letter-spacing: 0.05em;">Cardiology</div>
+      <table>
+        <thead>
+          <tr><th style="width: 100px;">Date</th><th style="width: 80px;">Time</th><th>Investigation</th><th>Doctor</th><th>Signed by</th></tr>
+        </thead>
+        <tbody>
+          ${
+            (cf.cardiology || []).length === 0
+              ? '<tr><td colspan="5" style="text-align: center; color: #64748b;">No cardiology investigations.</td></tr>'
+              : (cf.cardiology || [])
+                  .map(
+                    (c) => `
+            <tr><td>${c.date}</td><td>${c.time}</td><td style="font-weight:600;">${c.investigation}</td><td>${c.doctor}</td><td style="font-style:italic;">${c.sign}</td></tr>
+          `,
+                  )
+                  .join('')
+          }
+        </tbody>
+      </table>
+    `;
+
+    const proceduresHtml = `
+      <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #475569; margin-bottom: 6px; letter-spacing: 0.05em;">Equipment Used</div>
+      <table>
+        <thead>
+          <tr><th>ON Date/Time</th><th>Equipment Type</th><th>Sign (ON)</th><th>OFF Date/Time</th><th>Sign (OFF)</th></tr>
+        </thead>
+        <tbody>
+          ${
+            (cf.equipment || []).length === 0
+              ? '<tr><td colspan="5" style="text-align: center; color: #64748b;">No equipment recorded.</td></tr>'
+              : (cf.equipment || [])
+                  .map(
+                    (eq) => `
+            <tr>
+              <td>${eq.onDate} · ${eq.onTime}</td>
+              <td style="font-weight:600;">${eq.type}</td>
+              <td style="font-style:italic;">${eq.sign}</td>
+              <td>${eq.offDate ? `${eq.offDate} · ${eq.offTime}` : '—'}</td>
+              <td style="font-style:italic;">${eq.offSign || '—'}</td>
+            </tr>
+          `,
+                  )
+                  .join('')
+          }
+        </tbody>
+      </table>
+
+      <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #475569; margin-top: 16px; margin-bottom: 6px; letter-spacing: 0.05em;">Dressing / Minor Procedures</div>
+      <table>
+        <thead>
+          <tr><th style="width: 100px;">Date</th><th style="width: 80px;">Time</th><th>Procedure</th><th>Doctor</th><th>Signed by</th></tr>
+        </thead>
+        <tbody>
+          ${
+            (cf.dressing || []).length === 0
+              ? '<tr><td colspan="5" style="text-align: center; color: #64748b;">No dressing procedures recorded.</td></tr>'
+              : (cf.dressing || [])
+                  .map(
+                    (d) => `
+            <tr><td>${d.date}</td><td>${d.time}</td><td style="font-weight:600;">${d.procedure}</td><td>${d.doctor}</td><td style="font-style:italic;">${d.sign}</td></tr>
+          `,
+                  )
+                  .join('')
+          }
+        </tbody>
+      </table>
+
+      <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #475569; margin-top: 16px; margin-bottom: 6px; letter-spacing: 0.05em;">Traction Details</div>
+      <table>
+        <thead>
+          <tr><th>Start Date/Time</th><th>Procedure</th><th>End Date/Time</th><th>Signed by</th></tr>
+        </thead>
+        <tbody>
+          ${
+            (cf.traction || []).length === 0
+              ? '<tr><td colspan="4" style="text-align: center; color: #64748b;">No traction procedures recorded.</td></tr>'
+              : (cf.traction || [])
+                  .map(
+                    (t) => `
+            <tr>
+              <td>${t.startDate} · ${t.startTime}</td>
+              <td style="font-weight:600;">${t.procedure}</td>
+              <td>${t.endDate ? `${t.endDate} · ${t.endTime}` : '—'}</td>
+              <td style="font-style:italic;">${t.sign}</td>
+            </tr>
+          `,
+                  )
+                  .join('')
+          }
+        </tbody>
+      </table>
+    `;
+
+    const visitsHtml = `
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 100px;">Date</th>
+            <th style="width: 60px; text-align: center;">First</th>
+            <th style="width: 60px; text-align: center;">Routine</th>
+            <th style="width: 80px; text-align: center;">Day Spcl.</th>
+            <th style="width: 80px; text-align: center;">Night Spcl.</th>
+            <th>Consultant</th>
+            <th>Signature</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${
+            (cf.rounds || []).length === 0
+              ? `
+            <tr><td colspan="7" style="text-align: center; color: #64748b;">No visits/rounds recorded.</td></tr>
+          `
+              : (cf.rounds || [])
+                  .map(
+                    (r) => `
+            <tr>
+              <td>${r.date}</td>
+              <td style="text-align: center;">${r.first ? '✓' : '—'}</td>
+              <td style="text-align: center;">${r.routine ? '✓' : '—'}</td>
+              <td style="text-align: center;">${r.daySpcl ? '✓' : '—'}</td>
+              <td style="text-align: center;">${r.nightSpcl ? '✓' : '—'}</td>
+              <td style="font-weight: 500;">${r.consultant}</td>
+              <td style="font-style: italic; color: #475569;">${r.signature}</td>
+            </tr>
+          `,
+                  )
+                  .join('')
+          }
+        </tbody>
+      </table>
+    `;
+
+    w.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Case File Summary - ${adm.patientName} (${adm.ipNo})</title>
+        <style>
+          @media print {
+            body {
+              padding: 0;
+              margin: 10mm 15mm;
+            }
+            .page-break {
+              page-break-before: always;
+            }
+          }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #1e293b;
+            line-height: 1.4;
+            font-size: 11px;
+            margin: 20px;
+          }
+          .header {
+            border-bottom: 2px solid #0f172a;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+            color: #0f172a;
+          }
+          .hospital-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #0891b2;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+          }
+          .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 10px;
+          }
+          .meta-item {
+            display: flex;
+            flex-direction: column;
+          }
+          .meta-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            color: #64748b;
+            font-weight: 600;
+            margin-bottom: 2px;
+          }
+          .meta-value {
+            font-size: 11px;
+            font-weight: 500;
+            color: #0f172a;
+          }
+          .section-container {
+            margin-bottom: 20px;
+          }
+          .section-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #0f172a;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid #cbd5e1;
+            padding-bottom: 3px;
+            margin-top: 15px;
+            margin-bottom: 8px;
+          }
+          .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+          }
+          .card {
+            border: 1px solid #e2e8f0;
+            border-radius: 5px;
+            padding: 8px 10px;
+            background: #fff;
+            margin-bottom: 6px;
+          }
+          .card-title {
+            font-size: 9px;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+          }
+          .card-content {
+            font-size: 11px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 12px;
+          }
+          th {
+            background: #f1f5f9;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #475569;
+            text-align: left;
+            padding: 6px 8px;
+            border-bottom: 1px solid #cbd5e1;
+          }
+          td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 10.5px;
+          }
+          .badge {
+            display: inline-block;
+            font-size: 9px;
+            font-weight: 600;
+            padding: 1px 5px;
+            border-radius: 3px;
+            text-transform: uppercase;
+          }
+          .badge-success { background: #dcfce7; color: #166534; }
+          .badge-warning { background: #fef3c7; color: #92400e; }
+          .badge-danger { background: #fee2e2; color: #991b1b; }
+          .badge-info { background: #e0f2fe; color: #0369a1; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <div class="hospital-name">mediVault Medical Center</div>
+            <h1>IPD Admission Case File</h1>
+          </div>
+          <div style="text-align: right; font-size: 10px; color: #64748b;">
+            Generated: ${new Date().toLocaleDateString('en-IN')} ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+          </div>
+        </div>
+
+        <div class="meta-grid">
+          <div class="meta-item"><span class="meta-label">Patient Name</span><span class="meta-value">${adm.patientName}</span></div>
+          <div class="meta-item"><span class="meta-label">IP Number</span><span class="meta-value" style="color: #0891b2; font-weight:600;">${adm.ipNo}</span></div>
+          <div class="meta-item"><span class="meta-label">MR Number</span><span class="meta-value">${adm.mrNo}</span></div>
+          <div class="meta-item"><span class="meta-label">Ward / Bed</span><span class="meta-value">${adm.ward} · Bed ${adm.bedNo}</span></div>
+          <div class="meta-item"><span class="meta-label">Admitting Dr.</span><span class="meta-value">${adm.admittingDoctor}</span></div>
+          <div class="meta-item"><span class="meta-label">Date Admitted</span><span class="meta-value">${fmtDate(adm.admittedOn)} · ${adm.admittedTime}</span></div>
+          <div class="meta-item"><span class="meta-label">Date Discharged</span><span class="meta-value">${adm.dischargedOn ? fmtDate(adm.dischargedOn) : 'Active Admission'}</span></div>
+          <div class="meta-item"><span class="meta-label">Age / Sex / Blood</span><span class="meta-value">${adm.age} yrs / ${adm.sex} / ${adm.blood}</span></div>
+        </div>
+
+        ${renderSection('General Consent & Intake', consentHtml)}
+        ${renderSection('Allergies & Past History', pastHistoryHtml)}
+        ${renderSection('Triage & Vitals', triageHtml)}
+        ${renderSection('Clinical History & Exam', hxExamHtml)}
+        
+        <div class="page-break"></div>
+        
+        ${renderSection('Care Plan & Management Goals', carePlanHtml)}
+        ${renderSection('Medications Reconciliation', medsHtml)}
+        ${renderSection('Treatment Chart', treatmentHtml)}
+        
+        <div class="page-break"></div>
+        
+        ${renderSection('Clinical Progress Notes', clinicalHtml)}
+        ${renderSection('Nursing Notes', nursingHtml)}
+        ${renderSection('Diagnostic Investigations', investigationsHtml)}
+        ${renderSection('Procedures & Equipment Log', proceduresHtml)}
+        ${renderSection('Record of Visits / Rounds', visitsHtml)}
+
+      </body>
+      </html>
+    `);
     w.document.close();
     w.print();
   };
