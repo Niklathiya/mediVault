@@ -3927,11 +3927,15 @@ function TreatmentChart({ adm, id, setAdm, canEdit }) {
     return dates;
   })();
 
+  // Build a stable per-drug key for txGrid storage; also track array index (dIdx)
+  // for the isEditing check — drug.id may be undefined on legacy data, causing
+  // all drugs to share the same undefined key and all appear selected at once.
   const gridRows = [];
-  txList.forEach((drug) => {
+  txList.forEach((drug, dIdx) => {
+    const txKey = drug.id || `drug-${dIdx}`;
     const times = FREQ_TIMES[drug.freq] || [drug.freq || '—'];
     times.forEach((time, tIdx) => {
-      gridRows.push({ drug, time, tIdx, isFirst: tIdx === 0 });
+      gridRows.push({ drug, dIdx, txKey, time, tIdx, isFirst: tIdx === 0 });
     });
   });
 
@@ -3945,31 +3949,38 @@ function TreatmentChart({ adm, id, setAdm, canEdit }) {
     setAdm(updatedAdm);
   };
 
-  const toggleCell = async (drugId, date, time) => {
-    const cell = txGrid[drugId]?.[date]?.[time];
+  // cellEdit: { dIdx, txKey, date, time }
+  // dIdx  = array index — always unique, used only for isEditing comparison
+  // txKey = drug.id || `drug-${dIdx}` — used for txGrid data storage
+  const toggleCell = async (dIdx, txKey, date, time) => {
+    const cell = txGrid[txKey]?.[date]?.[time];
     if (cell?.given) {
       const newGrid = {
         ...txGrid,
-        [drugId]: {
-          ...(txGrid[drugId] || {}),
-          [date]: { ...(txGrid[drugId]?.[date] || {}), [time]: { given: false, sign: '' } },
+        [txKey]: {
+          ...(txGrid[txKey] || {}),
+          [date]: { ...(txGrid[txKey]?.[date] || {}), [time]: { given: false, sign: '' } },
         },
       };
       await persist(txList, newGrid);
+    } else if (cellEdit?.dIdx === dIdx && cellEdit?.date === date && cellEdit?.time === time) {
+      // Same cell clicked again — deselect
+      setCellEdit(null);
+      setSignInput('');
     } else {
-      setCellEdit({ drugId, date, time });
+      setCellEdit({ dIdx, txKey, date, time });
       setSignInput('');
     }
   };
 
   const confirmCell = async () => {
     if (!cellEdit) return;
-    const { drugId, date, time } = cellEdit;
+    const { txKey, date, time } = cellEdit;
     const newGrid = {
       ...txGrid,
-      [drugId]: {
-        ...(txGrid[drugId] || {}),
-        [date]: { ...(txGrid[drugId]?.[date] || {}), [time]: { given: true, sign: signInput } },
+      [txKey]: {
+        ...(txGrid[txKey] || {}),
+        [date]: { ...(txGrid[txKey]?.[date] || {}), [time]: { given: true, sign: signInput } },
       },
     };
     setSaving(true);
@@ -4096,8 +4107,8 @@ function TreatmentChart({ adm, id, setAdm, canEdit }) {
                 ))}
               </div>
               {/* Grid rows */}
-              {gridRows.map(({ drug, time, tIdx, isFirst }) => (
-                <div key={`${drug.id}-${time}`} style={{ display: 'flex', minWidth: 'max-content', borderTop: tIdx === 0 ? '2px solid rgba(15,23,42,0.07)' : '1px solid rgba(15,23,42,0.04)' }}>
+              {gridRows.map(({ drug, dIdx, txKey, time, tIdx, isFirst }) => (
+                <div key={`${dIdx}-${time}`} style={{ display: 'flex', minWidth: 'max-content', borderTop: tIdx === 0 ? '2px solid rgba(15,23,42,0.07)' : '1px solid rgba(15,23,42,0.04)' }}>
                   <div style={{ width: 220, flexShrink: 0, padding: '8px 14px', borderRight: '1px solid rgba(15,23,42,0.06)', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 40 }}>
                     {isFirst && (
                       <>
@@ -4113,9 +4124,9 @@ function TreatmentChart({ adm, id, setAdm, canEdit }) {
                     {time}
                   </div>
                   {admDates.map((date) => {
-                    const cell = txGrid[drug.id]?.[date]?.[time];
+                    const cell = txGrid[txKey]?.[date]?.[time];
                     const beforeRx = drug.date && date < drug.date;
-                    const isEditing = cellEdit?.drugId === drug.id && cellEdit?.date === date && cellEdit?.time === time;
+                    const isEditing = cellEdit?.dIdx === dIdx && cellEdit?.date === date && cellEdit?.time === time;
                     if (beforeRx) {
                       return (
                         <div key={date} style={{ width: 86, flexShrink: 0, borderRight: '1px solid rgba(15,23,42,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -4125,7 +4136,7 @@ function TreatmentChart({ adm, id, setAdm, canEdit }) {
                     }
                     if (cell?.given) {
                       return (
-                        <div key={date} onClick={() => toggleCell(drug.id, date, time)}
+                        <div key={date} onClick={() => toggleCell(dIdx, txKey, date, time)}
                           style={{ width: 86, flexShrink: 0, padding: '6px 4px', background: 'rgba(22,163,74,0.08)', borderRight: '1px solid rgba(15,23,42,0.04)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
                           <span style={{ fontSize: 16, color: '#16a34a', fontWeight: 500 }}>✓</span>
                           {cell.sign && <div style={{ fontSize: 9, color: C.muted, maxWidth: 78, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cell.sign}</div>}
@@ -4133,9 +4144,9 @@ function TreatmentChart({ adm, id, setAdm, canEdit }) {
                       );
                     }
                     return (
-                      <div key={date} onClick={() => toggleCell(drug.id, date, time)}
-                        style={{ width: 86, flexShrink: 0, padding: '6px 4px', background: isEditing ? 'rgba(8,145,178,0.06)' : 'transparent', borderRight: '1px solid rgba(15,23,42,0.04)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 120ms' }}>
-                        <span style={{ fontSize: 16, color: '#cbd5e1' }}>○</span>
+                      <div key={date} onClick={() => toggleCell(dIdx, txKey, date, time)}
+                        style={{ width: 86, flexShrink: 0, padding: '6px 4px', background: isEditing ? 'rgba(8,145,178,0.10)' : 'transparent', borderRight: '1px solid rgba(15,23,42,0.04)', boxShadow: isEditing ? 'inset 0 0 0 2px rgba(8,145,178,0.5)' : 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 120ms', position: 'relative', zIndex: isEditing ? 1 : 0 }}>
+                        <span style={{ fontSize: 16, color: isEditing ? '#0891b2' : '#cbd5e1', fontWeight: isEditing ? 700 : 400 }}>○</span>
                       </div>
                     );
                   })}
