@@ -35,6 +35,8 @@ import {
   Pencil,
   Trash2,
   Info,
+  Circle,
+  CheckCircle2,
 } from 'lucide-react';
 
 const TODAY = new Date().toISOString().slice(0, 10);
@@ -1511,7 +1513,7 @@ export default function AdmissionDetail() {
   };
 
   return (
-    <div style={{ animation: 'mv-fade 200ms ease both' }}>
+    <div style={{ animation: 'mv-fade 200ms ease both', minWidth: 0, overflow: 'hidden' }}>
       {/* Breadcrumb */}
       <div
         style={{
@@ -1927,8 +1929,8 @@ export default function AdmissionDetail() {
           ))}
         </nav>
 
-        {/* Right pane */}
-        <div key={currentTab} style={{ animation: 'mv-fade 150ms ease both' }}>
+        {/* Right pane — minWidth:0 prevents the grid column from expanding to fit wide table content */}
+        <div key={currentTab} style={{ animation: 'mv-fade 150ms ease both', minWidth: 0 }}>
           {/* ─── OVERVIEW ─── */}
           {currentTab === 'overview' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -4084,7 +4086,17 @@ function TreatmentChart({ adm, id, setAdm, canEdit }) {
           {txList.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', background: 'rgba(8,145,178,0.06)', borderBottom: '1px solid rgba(8,145,178,0.15)', fontSize: 12.5, color: C.text }}>
               <Info size={14} color="#0891b2" style={{ flexShrink: 0 }} />
-              <span><strong>How to use:</strong> Click any ○ pending cell to mark administered &amp; add nurse initials. Click a ✓ green cell to unmark it.</span>
+              <span>
+                <strong>How to use:</strong>{' '}Click any{' '}
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: '#f1f5f9', borderRadius: 4, padding: '1px 6px', fontSize: 11, color: '#94a3b8' }}>
+                  <Circle size={11} /> pending
+                </span>{' '}
+                cell to mark administered &amp; add nurse initials. Click a{' '}
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: 'rgba(22,163,74,0.08)', borderRadius: 4, padding: '1px 6px', fontSize: 11, color: '#16a34a' }}>
+                  <CheckCircle2 size={11} /> green
+                </span>{' '}
+                cell to unmark it.
+              </span>
             </div>
           )}
           {txList.length === 0 ? (
