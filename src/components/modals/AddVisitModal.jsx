@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ClipboardList } from 'lucide-react';
-import { addPatientSubItem } from '../../firebase/services/patientService.js';
+import { addPatientSubItem, updatePatientSubItem } from '../../firebase/services/patientService.js';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const TODAY  = new Date().toISOString().slice(0, 10);
@@ -26,8 +26,21 @@ const lbl = {
   color: 'var(--fg-on-light-muted)', marginBottom: 4,
 };
 
-export default function AddVisitModal({ open, patientId, onAdd, onClose }) {
-  const [form, setForm]     = useState(empty);
+export default function AddVisitModal({ open, patientId, onAdd, onClose, initialData, editId, onUpdate }) {
+  const isEdit = Boolean(editId);
+  const [form, setForm] = useState(() =>
+    initialData
+      ? {
+          date: initialData.date || TODAY,
+          doctor: initialData.doctor || '',
+          dept: initialData.dept || '',
+          complaint: initialData.complaint || '',
+          diagnosis: initialData.diagnosis || '',
+          treatment: initialData.treatment || '',
+          notes: initialData.notes || '',
+        }
+      : empty
+  );
   const [saving, setSaving] = useState(false);
   const [done, setDone]     = useState(false);
 
@@ -52,12 +65,17 @@ export default function AddVisitModal({ open, patientId, onAdd, onClose }) {
         diagnosis: form.diagnosis,
         treatment: form.treatment,
         notes:     form.notes,
-        time:      new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
       };
-      const ref = await addPatientSubItem(patientId, 'visits', visitData);
-      onAdd({ id: ref.id, ...visitData });
+      if (isEdit) {
+        await updatePatientSubItem(patientId, 'visits', editId, visitData);
+        onUpdate({ id: editId, ...visitData });
+      } else {
+        visitData.time = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const ref = await addPatientSubItem(patientId, 'visits', visitData);
+        onAdd({ id: ref.id, ...visitData });
+      }
       setDone(true);
-      setTimeout(() => { setDone(false); setForm(empty); onClose(); }, 1000);
+      setTimeout(() => { setDone(false); onClose(); }, 1000);
     } catch (err) {
       console.error(err);
       setSaving(false);
@@ -78,8 +96,8 @@ export default function AddVisitModal({ open, patientId, onAdd, onClose }) {
               <ClipboardList size={16} color="white" />
             </div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--fg-on-light)' }}>Add Visit</div>
-              <div style={{ fontSize: 12, color: 'var(--fg-on-light-muted)' }}>Record a new OPD clinical visit</div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--fg-on-light)' }}>{isEdit ? 'Edit Visit' : 'Add Visit'}</div>
+              <div style={{ fontSize: 12, color: 'var(--fg-on-light-muted)' }}>{isEdit ? 'Update OPD clinical visit' : 'Record a new OPD clinical visit'}</div>
             </div>
           </div>
           <button onClick={onClose} style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border-ui)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -132,7 +150,7 @@ export default function AddVisitModal({ open, patientId, onAdd, onClose }) {
         <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border-card)', display: 'flex', justifyContent: 'flex-end', gap: 10, background: 'var(--surface-subtle)', flexShrink: 0 }}>
           <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
           <button type="submit" onClick={handleSubmit} className="btn-primary" disabled={saving || done}>
-            {done ? 'Saved!' : saving ? 'Saving…' : 'Save Visit'}
+            {done ? 'Saved!' : saving ? 'Saving…' : isEdit ? 'Update Visit' : 'Save Visit'}
           </button>
         </div>
       </div>

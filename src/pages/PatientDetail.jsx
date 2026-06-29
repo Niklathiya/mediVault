@@ -5,6 +5,7 @@ import {
   getPatientFull,
   updatePatient,
   deletePatientSubItem,
+  updatePatientSubItem,
 } from '../firebase/services/patientService.js';
 import AddVisitModal from '../components/modals/AddVisitModal.jsx';
 import AddPrescriptionModal from '../components/modals/AddPrescriptionModal.jsx';
@@ -244,6 +245,11 @@ export default function PatientDetail() {
   const [vitalsModal, setVitalsModal] = useState(false);
   const [documentModal, setDocumentModal] = useState(false);
   const [admissionModal, setAdmissionModal] = useState(false);
+  const [editVisit, setEditVisit] = useState(null);
+  const [editPrescription, setEditPrescription] = useState(null);
+  const [editLab, setEditLab] = useState(null);
+  const [editVital, setEditVital] = useState(null);
+  const [editDocument, setEditDocument] = useState(null);
 
   // Adjust state during render when id changes to avoid synchronous setState inside useEffect
   const [prevId, setPrevId] = useState(id);
@@ -347,6 +353,61 @@ export default function PatientDetail() {
 
   const addItem = (subcol, item) =>
     setPatient((prev) => ({ ...prev, [subcol]: [item, ...(prev[subcol] || [])] }));
+
+  const updateItem = async (subcol, itemId, newData) => {
+    await updatePatientSubItem(id, subcol, itemId, newData);
+    setPatient((prev) => ({
+      ...prev,
+      [subcol]: (prev[subcol] || []).map((i) => (i.id === itemId ? { ...i, ...newData } : i)),
+    }));
+  };
+
+  const printItem = (type, item) => {
+    let iframe = document.getElementById('print-iframe');
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = 'print-iframe';
+      iframe.style.cssText = 'position:absolute;width:0;height:0;border:0;top:-1000px;left:-1000px;';
+      document.body.appendChild(iframe);
+    }
+    const styles = `body{font-family:sans-serif;padding:32px;color:#0f172a;max-width:760px;margin:0 auto;}
+      h1{font-size:20px;margin:0 0 4px;}p{margin:4px 0;font-size:13px;color:#475569;}
+      .label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#94a3b8;margin:16px 0 4px;}
+      .value{font-size:14px;color:#0f172a;margin:0 0 8px;}
+      table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px;}
+      th{text-align:left;padding:7px 10px;background:#f1f5f9;font-size:11px;text-transform:uppercase;color:#64748b;}
+      td{padding:8px 10px;border-top:1px solid #e2e8f0;}`;
+    let body = `<h1>${patient.name}</h1><p>${id} · ${patient.age} yrs, ${patient.sex}</p>`;
+    if (type === 'visit') {
+      body += `<div class="label">Visit — ${item.dateLabel || item.date}</div>
+        <div class="label">Doctor</div><div class="value">${item.doctor} · ${item.dept}</div>
+        <div class="label">Chief Complaint</div><div class="value">${item.complaint}</div>
+        <div class="label">Diagnosis</div><div class="value">${item.diagnosis}</div>
+        <div class="label">Treatment</div><div class="value">${item.treatment}</div>
+        ${item.notes ? `<div class="label">Notes</div><div class="value">${item.notes}</div>` : ''}`;
+    } else if (type === 'prescription') {
+      body += `<div class="label">Prescription — ${item.date}</div>
+        <div class="label">Drug</div><div class="value">${item.drug}</div>
+        <div class="label">Dosage / Frequency / Duration</div><div class="value">${item.dosage} · ${item.frequency} · ${item.duration}</div>
+        <div class="label">Prescribed by</div><div class="value">${item.doctor}</div>
+        ${item.instructions ? `<div class="label">Instructions</div><div class="value">${item.instructions}</div>` : ''}`;
+    } else if (type === 'lab') {
+      body += `<div class="label">Lab Result — ${item.date}</div>
+        <div class="label">Test</div><div class="value">${item.test}</div>
+        <div class="label">Result</div><div class="value">${item.result} (Normal: ${item.normal})</div>
+        <div class="label">Status</div><div class="value">${item.status}</div>
+        <div class="label">Ordered by</div><div class="value">${item.doctor}</div>`;
+    } else if (type === 'vital') {
+      body += `<div class="label">Vitals — ${item.date}</div>
+        <table><tr><th>BP</th><th>Pulse</th><th>Temp</th><th>SpO₂</th><th>Weight</th><th>Height</th></tr>
+        <tr><td>${item.bp}</td><td>${item.pulse} bpm</td><td>${item.temp}°F</td><td>${item.spo2}%</td><td>${item.wt} kg</td><td>${item.ht} cm</td></tr></table>`;
+    }
+    const pri = iframe.contentWindow || iframe.contentDocument;
+    pri.document.open();
+    pri.document.write(`<!DOCTYPE html><html><head><title>${type} — ${patient.name}</title><style>${styles}</style></head><body>${body}</body></html>`);
+    pri.document.close();
+    setTimeout(() => { pri.focus(); pri.print(); }, 100);
+  };
 
   const fmt = (n) => '₹' + n.toLocaleString('en-IN');
 
@@ -944,10 +1005,10 @@ export default function PatientDetail() {
                     )}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <ActionBtn icon={Printer} title="Print" />
+                    <ActionBtn icon={Printer} title="Print" onClick={() => printItem('visit', v)} />
                     {canAddVisit && (
                       <>
-                        <ActionBtn icon={Pencil} title="Edit" />
+                        <ActionBtn icon={Pencil} title="Edit" onClick={() => setEditVisit(v)} />
                         <ActionBtn
                           icon={Trash2}
                           title="Delete"
@@ -1040,10 +1101,10 @@ export default function PatientDetail() {
                     <div style={{ fontSize: 13, color: C.muted }}>{rx.duration}</div>
                     <div style={{ fontSize: 12, color: C.muted }}>{rx.doctor}</div>
                     <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                      <ActionBtn icon={Printer} title="Print" />
+                      <ActionBtn icon={Printer} title="Print" onClick={() => printItem('prescription', rx)} />
                       {canAddPrescription && (
                         <>
-                          <ActionBtn icon={Pencil} title="Edit" />
+                          <ActionBtn icon={Pencil} title="Edit" onClick={() => setEditPrescription(rx)} />
                           <ActionBtn
                             icon={Trash2}
                             title="Delete"
@@ -1157,10 +1218,10 @@ export default function PatientDetail() {
                       </span>
                     </div>
                     <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                      <ActionBtn icon={Printer} title="Print" />
+                      <ActionBtn icon={Printer} title="Print" onClick={() => printItem('lab', lab)} />
                       {canAddLab && (
                         <>
-                          <ActionBtn icon={Pencil} title="Edit" />
+                          <ActionBtn icon={Pencil} title="Edit" onClick={() => setEditLab(lab)} />
                           <ActionBtn
                             icon={Trash2}
                             title="Delete"
@@ -1388,10 +1449,10 @@ export default function PatientDetail() {
                     <div style={{ fontSize: 13, color: C.text }}>{v.wt} kg</div>
                     <div style={{ fontSize: 13, color: C.text }}>{v.spo2}%</div>
                     <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                      <ActionBtn icon={Printer} title="Print" />
+                      <ActionBtn icon={Printer} title="Print" onClick={() => printItem('vital', v)} />
                       {canRecordVitals && (
                         <>
-                          <ActionBtn icon={Pencil} title="Edit" />
+                          <ActionBtn icon={Pencil} title="Edit" onClick={() => setEditVital(v)} />
                           <ActionBtn
                             icon={Trash2}
                             title="Delete"
@@ -1500,6 +1561,7 @@ export default function PatientDetail() {
                       )}
                       <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
                         <button
+                          onClick={() => setEditDocument(doc)}
                           style={{
                             background: 'transparent',
                             border: `1px solid ${C.border}`,
@@ -1995,36 +2057,56 @@ export default function PatientDetail() {
         )}
       </div>
 
-      {/* Add modals */}
+      {/* Add / Edit modals */}
       <AddVisitModal
-        open={visitModal}
+        key={editVisit ? editVisit.id : 'new-visit'}
+        open={visitModal || Boolean(editVisit)}
         patientId={id}
+        initialData={editVisit}
+        editId={editVisit?.id}
         onAdd={(item) => addItem('visits', item)}
-        onClose={() => setVisitModal(false)}
+        onUpdate={(item) => { updateItem('visits', item.id, item); }}
+        onClose={() => { setVisitModal(false); setEditVisit(null); }}
       />
       <AddPrescriptionModal
-        open={prescriptionModal}
+        key={editPrescription ? editPrescription.id : 'new-prescription'}
+        open={prescriptionModal || Boolean(editPrescription)}
         patientId={id}
+        initialData={editPrescription}
+        editId={editPrescription?.id}
         onAdd={(item) => addItem('prescriptions', item)}
-        onClose={() => setPrescriptionModal(false)}
+        onUpdate={(item) => { updateItem('prescriptions', item.id, item); }}
+        onClose={() => { setPrescriptionModal(false); setEditPrescription(null); }}
       />
       <AddLabModal
-        open={labModal}
+        key={editLab ? editLab.id : 'new-lab'}
+        open={labModal || Boolean(editLab)}
         patientId={id}
+        initialData={editLab}
+        editId={editLab?.id}
         onAdd={(item) => addItem('labs', item)}
-        onClose={() => setLabModal(false)}
+        onUpdate={(item) => { updateItem('labs', item.id, item); }}
+        onClose={() => { setLabModal(false); setEditLab(null); }}
       />
       <RecordVitalsModal
-        open={vitalsModal}
+        key={editVital ? editVital.id : 'new-vital'}
+        open={vitalsModal || Boolean(editVital)}
         patientId={id}
+        initialData={editVital}
+        editId={editVital?.id}
         onAdd={(item) => addItem('vitals', item)}
-        onClose={() => setVitalsModal(false)}
+        onUpdate={(item) => { updateItem('vitals', item.id, item); }}
+        onClose={() => { setVitalsModal(false); setEditVital(null); }}
       />
       <AddDocumentModal
-        open={documentModal}
+        key={editDocument ? editDocument.id : 'new-document'}
+        open={documentModal || Boolean(editDocument)}
         patientId={id}
+        initialData={editDocument}
+        editId={editDocument?.id}
         onAdd={(item) => addItem('documents', item)}
-        onClose={() => setDocumentModal(false)}
+        onUpdate={(item) => { updateItem('documents', item.id, item); }}
+        onClose={() => { setDocumentModal(false); setEditDocument(null); }}
       />
       <NewAdmissionModal
         open={admissionModal}

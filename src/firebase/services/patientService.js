@@ -103,3 +103,8 @@ export async function deletePatientSubItem(patientId, subcol, itemId) {
 export async function addPatientSubItem(patientId, subcol, data) {
   return await addDoc(collection(db, COL, patientId, subcol), data);
 }
+
+/** Update an existing subcollection item */
+export async function updatePatientSubItem(patientId, subcol, itemId, updates) {
+  await updateDoc(doc(db, COL, patientId, subcol, itemId), updates);
+}

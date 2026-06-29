@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Activity } from 'lucide-react';
-import { addPatientSubItem } from '../../firebase/services/patientService.js';
+import { addPatientSubItem, updatePatientSubItem } from '../../firebase/services/patientService.js';
 
 const TODAY  = new Date().toISOString().slice(0, 10);
 
@@ -9,6 +9,14 @@ function isoToDisplay(iso) {
   if (!iso) return '';
   const [y, m, d] = iso.split('-');
   return `${d}/${m}/${y}`;
+}
+
+function displayToIso(dmy) {
+  if (!dmy) return TODAY;
+  const parts = dmy.split('/');
+  if (parts.length !== 3) return TODAY;
+  const [d, m, y] = parts;
+  return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
 }
 
 const empty = { date: TODAY, bp: '', pulse: '', temp: '', wt: '', ht: '', spo2: '' };
@@ -25,8 +33,21 @@ const lbl = {
   color: 'var(--fg-on-light-muted)', marginBottom: 4,
 };
 
-export default function RecordVitalsModal({ open, patientId, onAdd, onClose }) {
-  const [form, setForm]     = useState(empty);
+export default function RecordVitalsModal({ open, patientId, onAdd, onClose, initialData, editId, onUpdate }) {
+  const isEdit = Boolean(editId);
+  const [form, setForm] = useState(() =>
+    initialData
+      ? {
+          date:  displayToIso(initialData.date),
+          bp:    initialData.bp || '',
+          pulse: initialData.pulse != null ? String(initialData.pulse) : '',
+          temp:  initialData.temp || '',
+          wt:    initialData.wt != null ? String(initialData.wt) : '',
+          ht:    initialData.ht != null ? String(initialData.ht) : '',
+          spo2:  initialData.spo2 != null ? String(initialData.spo2) : '',
+        }
+      : empty
+  );
   const [saving, setSaving] = useState(false);
   const [done, setDone]     = useState(false);
 
@@ -52,10 +73,15 @@ export default function RecordVitalsModal({ open, patientId, onAdd, onClose }) {
         ht:    parseFloat(form.ht) || 0,
         spo2:  parseFloat(form.spo2) || 0,
       };
-      const ref = await addPatientSubItem(patientId, 'vitals', data);
-      onAdd({ id: ref.id, ...data });
+      if (isEdit) {
+        await updatePatientSubItem(patientId, 'vitals', editId, data);
+        onUpdate({ id: editId, ...data });
+      } else {
+        const ref = await addPatientSubItem(patientId, 'vitals', data);
+        onAdd({ id: ref.id, ...data });
+      }
       setDone(true);
-      setTimeout(() => { setDone(false); setForm(empty); onClose(); }, 1000);
+      setTimeout(() => { setDone(false); onClose(); }, 1000);
     } catch (err) {
       console.error(err);
       setSaving(false);
@@ -76,7 +102,7 @@ export default function RecordVitalsModal({ open, patientId, onAdd, onClose }) {
               <Activity size={16} color="white" />
             </div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--fg-on-light)' }}>Record Vitals</div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--fg-on-light)' }}>{isEdit ? 'Edit Vitals' : 'Record Vitals'}</div>
               <div style={{ fontSize: 12, color: 'var(--fg-on-light-muted)' }}>Log a vital signs measurement</div>
             </div>
           </div>
@@ -127,7 +153,7 @@ export default function RecordVitalsModal({ open, patientId, onAdd, onClose }) {
         <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border-card)', display: 'flex', justifyContent: 'flex-end', gap: 10, background: 'var(--surface-subtle)', flexShrink: 0 }}>
           <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
           <button type="submit" onClick={handleSubmit} className="btn-primary" disabled={saving || done}>
-            {done ? 'Saved!' : saving ? 'Saving…' : 'Record Vitals'}
+            {done ? 'Saved!' : saving ? 'Saving…' : isEdit ? 'Update Vitals' : 'Record Vitals'}
           </button>
         </div>
       </div>
