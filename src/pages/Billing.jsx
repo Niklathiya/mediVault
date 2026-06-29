@@ -1,154 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Plus, X, IndianRupee, Pencil, Eye, Check, ChevronDown, Printer } from 'lucide-react';
-
-const PATIENT_OPTIONS = [
-  { id: 'PT-0128', name: 'Kiran Desai' },
-  { id: 'PT-0127', name: 'Ramesh Patel' },
-  { id: 'PT-0126', name: 'Sunita Sharma' },
-  { id: 'PT-0125', name: 'Ankit Mehta' },
-  { id: 'PT-0124', name: 'Priya Joshi' },
-  { id: 'PT-0123', name: 'Vijay Kumar' },
-  { id: 'PT-0122', name: 'Rekha Nair' },
-  { id: 'PT-0121', name: 'Santosh Gupta' },
-];
+import { subscribeBills, addBill, updateBill, recordPayment, deleteBill } from '../firebase/services/billingService.js';
+import { subscribePatients } from '../firebase/services/patientService.js';
 
 const BILL_TYPES = ['OPD', 'IPD', 'Lab', 'Pharmacy', 'Emergency'];
 
-const INITIAL_BILLS = [
-  {
-    id: 'INV-2026-0042',
-    patient: 'Ramesh Patel',
-    age: 45,
-    sex: 'M',
-    date: '25 Jun 2026',
-    type: 'IPD',
-    items: [
-      { description: 'IPD (3 days)', qty: 1, rate: 18000 },
-      { description: 'Surgery OT', qty: 1, rate: 7000 },
-      { description: 'Medications', qty: 1, rate: 2000 },
-      { description: 'Lab Tests', qty: 1, rate: 1500 },
-    ],
-    discount: 0,
-    notes: '',
-    amount: 28500,
-    paid: 28500,
-    status: 'Paid',
-    payments: [{ amount: 28500, date: '25 Jun 2026', note: 'Cash payment' }],
-  },
-  {
-    id: 'INV-2026-0041',
-    patient: 'Sunita Sharma',
-    age: 52,
-    sex: 'F',
-    date: '24 Jun 2026',
-    type: 'IPD',
-    items: [
-      { description: 'ICU (4 days)', qty: 1, rate: 30000 },
-      { description: 'Investigations', qty: 1, rate: 16000 },
-      { description: 'Nursing', qty: 1, rate: 6000 },
-    ],
-    discount: 0,
-    notes: 'TPA claim in progress',
-    amount: 52000,
-    paid: 26000,
-    status: 'Partial',
-    payments: [{ amount: 26000, date: '24 Jun 2026', note: 'Insurance advance' }],
-  },
-  {
-    id: 'INV-2026-0040',
-    patient: 'Ankit Mehta',
-    age: 33,
-    sex: 'M',
-    date: '23 Jun 2026',
-    type: 'IPD',
-    items: [
-      { description: 'Surgery OT', qty: 1, rate: 18000 },
-      { description: 'Anaesthesia', qty: 1, rate: 10000 },
-      { description: 'Post-op care', qty: 1, rate: 7000 },
-    ],
-    discount: 0,
-    notes: '',
-    amount: 35000,
-    paid: 0,
-    status: 'Pending',
-    payments: [],
-  },
-  {
-    id: 'INV-2026-0039',
-    patient: 'Priya Joshi',
-    age: 28,
-    sex: 'F',
-    date: '22 Jun 2026',
-    type: 'IPD',
-    items: [
-      { description: 'Delivery room', qty: 1, rate: 8000 },
-      { description: 'OB care', qty: 1, rate: 6000 },
-      { description: 'Neonatal', qty: 1, rate: 4000 },
-    ],
-    discount: 0,
-    notes: '',
-    amount: 18000,
-    paid: 18000,
-    status: 'Paid',
-    payments: [{ amount: 18000, date: '22 Jun 2026', note: 'Cash payment' }],
-  },
-  {
-    id: 'INV-2026-0038',
-    patient: 'Vijay Kumar',
-    age: 61,
-    sex: 'M',
-    date: '21 Jun 2026',
-    type: 'IPD',
-    items: [
-      { description: 'General ward (7 days)', qty: 1, rate: 10000 },
-      { description: 'Lab reports', qty: 1, rate: 4000 },
-    ],
-    discount: 0,
-    notes: '',
-    amount: 14000,
-    paid: 7000,
-    status: 'Partial',
-    payments: [{ amount: 7000, date: '21 Jun 2026', note: 'Cash payment' }],
-  },
-  {
-    id: 'INV-2026-0037',
-    patient: 'Rekha Nair',
-    age: 38,
-    sex: 'F',
-    date: '18 Jun 2026',
-    type: 'IPD',
-    items: [
-      { description: 'Ortho surgery', qty: 1, rate: 40000 },
-      { description: 'Physiotherapy', qty: 1, rate: 8000 },
-      { description: 'Implant', qty: 1, rate: 20000 },
-    ],
-    discount: 0,
-    notes: '',
-    amount: 68000,
-    paid: 68000,
-    status: 'Paid',
-    payments: [{ amount: 68000, date: '18 Jun 2026', note: 'Cheque' }],
-  },
-  {
-    id: 'INV-2026-0036',
-    patient: 'Santosh Gupta',
-    age: 55,
-    sex: 'M',
-    date: '16 Jun 2026',
-    type: 'OPD',
-    items: [
-      { description: 'General ward (12 days)', qty: 1, rate: 18000 },
-      { description: 'Medicines', qty: 1, rate: 4000 },
-    ],
-    discount: 0,
-    notes: '',
-    amount: 22000,
-    paid: 0,
-    status: 'Pending',
-    payments: [],
-  },
-];
 
 const STATUS_STYLE = {
   Paid: { bg: '#dcfce7', color: '#15803d' },
@@ -207,13 +64,24 @@ const labelStyle = {
 };
 
 export default function Billing() {
-  const [bills, setBills] = useState(INITIAL_BILLS);
+  const [bills, setBills] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [patients, setPatients] = useState([]);
   const [filter, setFilter] = useState('All bills');
   const [filterOpen, setFilterOpen] = useState(false);
   const [modal, setModal] = useState(null); // { mode: 'view'|'edit'|'new', bill }
   const [form, setForm] = useState(initForm());
   const [payModal, setPayModal] = useState(null); // bill being paid
   const [payForm, setPayForm] = useState({ amount: '', mode: 'Cash', note: '' });
+
+  useEffect(() => {
+    const unsubB = subscribeBills(
+      (data) => { setBills(data); setLoading(false); },
+      (err)  => { console.error('bills error:', err); setLoading(false); },
+    );
+    const unsubP = subscribePatients((data) => setPatients(data), console.error);
+    return () => { unsubB(); unsubP(); };
+  }, []);
 
   const filtered = filter === 'All bills' ? bills : bills.filter((b) => b.status === filter);
 
@@ -238,38 +106,16 @@ export default function Billing() {
   };
   const closePayModal = () => setPayModal(null);
 
-  const savePayment = () => {
+  const savePayment = async () => {
     const amt = Number(payForm.amount);
     if (!amt || !payModal) return;
-    const today = '28 Jun 2026';
-    const newEntry = { amount: amt, date: today, note: payForm.note, mode: payForm.mode };
-    setBills((prev) =>
-      prev.map((b) => {
-        if (b.id !== payModal.id) return b;
-        const newPaid = b.paid + amt;
-        const newStatus = newPaid >= b.amount ? 'Paid' : 'Partial';
-        return {
-          ...b,
-          paid: newPaid,
-          status: newStatus,
-          payments: [...(b.payments || []), newEntry],
-        };
-      }),
-    );
-    setModal((m) => {
-      if (!m || m.mode !== 'view') return m;
-      const newPaid = m.bill.paid + amt;
-      const newStatus = newPaid >= m.bill.amount ? 'Paid' : 'Partial';
-      return {
-        ...m,
-        bill: {
-          ...m.bill,
-          paid: newPaid,
-          status: newStatus,
-          payments: [...(m.bill.payments || []), newEntry],
-        },
-      };
-    });
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const now = new Date();
+    const dateLabel = `${String(now.getDate()).padStart(2,'0')} ${months[now.getMonth()]} ${now.getFullYear()}`;
+    const newEntry = { amount: amt, date: dateLabel, note: payForm.note || '', mode: payForm.mode || 'Cash' };
+    const newPaid = payModal.paid + amt;
+    const newStatus = newPaid >= payModal.amount ? 'Paid' : newPaid > 0 ? 'Partial' : 'Pending';
+    await recordPayment(payModal.id, newEntry, newPaid, newStatus);
     closePayModal();
   };
 
@@ -336,31 +182,34 @@ export default function Billing() {
   const removeItem = (idx) =>
     setForm((f) => ({ ...f, items: f.items.filter((_, i) => i !== idx) }));
 
-  const saveBill = () => {
+  const saveBill = async () => {
     if (!modal) return;
     const total = calcTotal(form.items, form.discount);
     if (modal.mode === 'new') {
-      const maxNum = bills.reduce((m, b) => Math.max(m, parseInt(b.id.split('-')[2]) || 0), 0);
-      const newBill = {
-        id: `INV-2026-${String(maxNum + 1).padStart(4, '0')}`,
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const now = new Date();
+      const dateLabel = `${String(now.getDate()).padStart(2,'0')} ${months[now.getMonth()]} ${now.getFullYear()}`;
+      await addBill({
         patient: form.patient,
         age: 0,
         sex: '-',
-        date: '28 Jun 2026',
+        date: dateLabel,
         type: form.type,
         items: form.items,
-        discount: form.discount,
-        notes: form.notes,
+        discount: Number(form.discount) || 0,
+        notes: form.notes || '',
         amount: total,
         paid: 0,
         status: 'Pending',
         payments: [],
-      };
-      setBills((prev) => [newBill, ...prev]);
+      });
     } else {
-      setBills((prev) =>
-        prev.map((b) => (b.id === modal.bill?.id ? { ...b, ...form, amount: total } : b)),
-      );
+      await updateBill(modal.bill.id, {
+        items: form.items,
+        discount: Number(form.discount) || 0,
+        notes: form.notes || '',
+        amount: total,
+      });
     }
     closeModal();
   };
@@ -370,6 +219,12 @@ export default function Billing() {
   const editOpen = modal !== null && (modal.mode === 'edit' || modal.mode === 'new');
   const isNewBill = editOpen && modal !== null && modal.mode === 'new';
   const payBillOpen = payModal !== null;
+
+  if (loading) return (
+    <div style={{ padding: 60, textAlign: 'center', color: 'var(--fg-on-light-muted)', fontSize: 14 }}>
+      Loading billing records…
+    </div>
+  );
 
   return (
     <div style={{ animation: 'mv-fade 200ms ease both' }}>
@@ -1066,10 +921,8 @@ export default function Billing() {
                         style={{ ...inputStyle, marginTop: 4 }}
                       >
                         <option value="">— Select patient —</option>
-                        {PATIENT_OPTIONS.map((p) => (
-                          <option key={p.id} value={p.name}>
-                            {p.name} ({p.id})
-                          </option>
+                        {patients.filter(p => p.status !== 'archived').map((p) => (
+                          <option key={p.id} value={p.name}>{p.name} ({p.id})</option>
                         ))}
                       </select>
                     ) : (

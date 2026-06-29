@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, UserPlus } from 'lucide-react';
 import CustomSelect from '../ui/CustomSelect';
+import { addPatient } from '../../firebase/services/patientService.js';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
 
@@ -74,21 +75,38 @@ export default function RegisterPatientModal({ open, onClose }) {
     return age;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-
     setSaving(true);
-
-    setTimeout(() => {
+    try {
+      const allergyArr = form.allergies.split(',').map((s) => s.trim()).filter(Boolean);
+      const tagsArr    = form.tags.split(',').map((s) => s.trim()).filter(Boolean);
+      await addPatient({
+        name:      form.name,
+        dob:       form.dob,
+        age:       parseInt(form.age) || 0,
+        sex:       form.sex,
+        blood:     form.blood,
+        phone:     form.phone,
+        email:     form.email,
+        address:   form.address,
+        allergies: allergyArr,
+        hasAllergy: allergyArr.length > 0,
+        tags:      tagsArr,
+        emergency: { name: form.emergencyName, relation: form.emergencyRelation, phone: form.emergencyPhone },
+        insurance: form.insurance,
+      });
       setSaving(false);
       setDone(true);
-
       setTimeout(() => {
         setDone(false);
         setForm(empty);
         onClose();
       }, 1200);
-    }, 700);
+    } catch (err) {
+      console.error('Failed to register patient:', err);
+      setSaving(false);
+    }
   };
 
   return (

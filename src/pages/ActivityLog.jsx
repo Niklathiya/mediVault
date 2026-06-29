@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Activity,
   Search,
@@ -20,189 +20,8 @@ import {
   FileText,
   Info,
 } from 'lucide-react';
+import { subscribeLogs } from '../firebase/services/activityLogService.js';
 
-const LOGS = [
-  {
-    id: 1,
-    date: '26 Jun 2026',
-    time: '11:42 AM',
-    type: 'registration',
-    action: 'Registered new patient',
-    detail: 'Kiran Desai (PT-0128) · Age 32, Female, Blood A+',
-    fullDetail:
-      'Reception registered Kiran Desai (PT-0128) · Age 32, Female, Blood Group A+ · Walk-in at OPD · Referred by Dr. Priya Mehta · Contact: 98765-43210',
-    user: 'Reception',
-    module: 'Patients',
-  },
-  {
-    id: 2,
-    date: '26 Jun 2026',
-    time: '11:15 AM',
-    type: 'admission',
-    action: 'New IPD admission created',
-    detail: 'Ramesh Patel admitted to General Ward · Bed 4A',
-    fullDetail:
-      'Dr. Priya Mehta admitted Ramesh Patel (IPD-2026-043) · Ward: General · Bed 4A · Diagnosis: Hypertensive Emergency · Priority: High · Emergency contact notified',
-    user: 'Dr. Priya Mehta',
-    module: 'IPD',
-  },
-  {
-    id: 3,
-    date: '26 Jun 2026',
-    time: '10:58 AM',
-    type: 'lab',
-    action: 'Lab result uploaded',
-    detail: 'HbA1c result for Kiran Desai — 7.2% (High)',
-    fullDetail:
-      'Lab Technician uploaded HbA1c = 7.2% for Kiran Desai (PT-0128) · Reference range: 4.0–5.6% · Marked HIGH · Attending physician Dr. Priya Mehta notified automatically',
-    user: 'Lab Technician',
-    module: 'Labs',
-  },
-  {
-    id: 4,
-    date: '26 Jun 2026',
-    time: '10:30 AM',
-    type: 'billing',
-    action: 'Invoice generated',
-    detail: 'INV-2026-0035 · ₹1,200 for Kiran Desai',
-    fullDetail:
-      'Reception generated invoice INV-2026-0035 for Kiran Desai (PT-0128) · Consultation fee: ₹800 · Lab charges: ₹400 · Total: ₹1,200 · Payment pending',
-    user: 'Reception',
-    module: 'Billing',
-  },
-  {
-    id: 5,
-    date: '26 Jun 2026',
-    time: '09:55 AM',
-    type: 'prescription',
-    action: 'Prescription issued',
-    detail: 'Metformin 500mg + Amlodipine 5mg for Kiran Desai',
-    fullDetail:
-      'Dr. Priya Mehta prescribed Metformin 500mg BD + Amlodipine 5mg OD for Kiran Desai (PT-0128) · Duration: 30 days · Dispensed from pharmacy · 2 refills allowed',
-    user: 'Dr. Priya Mehta',
-    module: 'Patients',
-  },
-  {
-    id: 6,
-    date: '26 Jun 2026',
-    time: '09:22 AM',
-    type: 'discharge',
-    action: 'Patient discharged',
-    detail: 'Anita Verma (IPD-2026-041) discharged from ICU',
-    fullDetail:
-      'Dr. Rajan Sinha discharged Anita Verma (IPD-2026-041) from ICU · Stay: 4 days · Final diagnosis: Acute Myocardial Infarction · Follow-up scheduled in 7 days · Discharge summary auto-generated',
-    user: 'Dr. Rajan Sinha',
-    module: 'IPD',
-  },
-  {
-    id: 7,
-    date: '25 Jun 2026',
-    time: '06:10 PM',
-    type: 'alert',
-    action: 'Allergy alert triggered',
-    detail: 'Penicillin allergy flagged for Meena Agarwal',
-    fullDetail:
-      'System auto-flagged Penicillin allergy for Meena Agarwal (PT-0115) · Triggered when nurse attempted to record Amoxicillin prescription · Attending doctor notified immediately · Prescription blocked',
-    user: 'System',
-    module: 'Patients',
-  },
-  {
-    id: 8,
-    date: '25 Jun 2026',
-    time: '05:44 PM',
-    type: 'billing',
-    action: 'Payment recorded',
-    detail: 'INV-2026-0020 · ₹800 marked as Paid',
-    fullDetail:
-      'Cashier recorded payment for INV-2026-0020 · Patient: Vijay Kumar (PT-0119) · Amount: ₹800 · Payment mode: Cash · Receipt no: RCP-0094 · Balance: ₹0',
-    user: 'Cashier',
-    module: 'Billing',
-  },
-  {
-    id: 9,
-    date: '25 Jun 2026',
-    time: '04:30 PM',
-    type: 'lab',
-    action: 'Lab order placed',
-    detail: 'CBC + LFT ordered for Sunita Sharma (IPD-2026-042)',
-    fullDetail:
-      'Dr. Rajan Sinha ordered CBC + LFT for Sunita Sharma (IPD-2026-042) · Priority: Urgent · Sent to Pathology lab · Expected TAT: 2 hours · Sample collected at bedside',
-    user: 'Dr. Rajan Sinha',
-    module: 'Labs',
-  },
-  {
-    id: 10,
-    date: '25 Jun 2026',
-    time: '03:15 PM',
-    type: 'admission',
-    action: 'Bed transfer',
-    detail: 'Vijay Kumar moved from ICU Bed 3 to General Bed 6C',
-    fullDetail:
-      'Nurse Station transferred Vijay Kumar (IPD-2026-040) from ICU Bed 3 to General Ward Bed 6C · Reason: Condition stabilized · Approved by Dr. Rajan Sinha · Ward nurse notified',
-    user: 'Nurse Station',
-    module: 'IPD',
-  },
-  {
-    id: 11,
-    date: '25 Jun 2026',
-    time: '02:00 PM',
-    type: 'settings',
-    action: 'Settings updated',
-    detail: 'Hospital working hours changed to 08:00 – 21:00',
-    fullDetail:
-      'Admin updated hospital working hours from 08:00–20:00 to 08:00–21:00 · Change effective immediately · All 28 staff members notified via system alert',
-    user: 'Admin',
-    module: 'Settings',
-  },
-  {
-    id: 12,
-    date: '25 Jun 2026',
-    time: '11:30 AM',
-    type: 'registration',
-    action: 'Patient registered',
-    detail: 'Suresh Rao (PT-0126) added to system',
-    fullDetail:
-      'Reception registered Suresh Rao (PT-0126) · Age 58, Male, Blood B+ · Emergency case · Referred from City Clinic, Surat · Contact: 99887-65432',
-    user: 'Reception',
-    module: 'Patients',
-  },
-  {
-    id: 13,
-    date: '25 Jun 2026',
-    time: '10:05 AM',
-    type: 'prescription',
-    action: 'Prescription issued',
-    detail: 'Azithromycin 500mg for Anjali Shah',
-    fullDetail:
-      'Dr. Neerav Joshi prescribed Azithromycin 500mg OD for Anjali Shah (PT-0119) · Duration: 5 days · Diagnosis: Respiratory tract infection · No known drug allergies · Dispensed from pharmacy',
-    user: 'Dr. Neerav Joshi',
-    module: 'Patients',
-  },
-  {
-    id: 14,
-    date: '24 Jun 2026',
-    time: '07:45 PM',
-    type: 'discharge',
-    action: 'Discharge summary generated',
-    detail: 'Auto-summary created for Priya Joshi (IPD-2026-039)',
-    fullDetail:
-      'System auto-generated discharge summary for Priya Joshi (IPD-2026-039) · Length of stay: 6 days · Procedure: Appendectomy (successful) · Post-discharge care instructions included · Copy sent to patient email',
-    user: 'System',
-    module: 'IPD',
-  },
-  {
-    id: 15,
-    date: '24 Jun 2026',
-    time: '05:20 PM',
-    type: 'alert',
-    action: 'Critical lab value flagged',
-    detail: 'Potassium 6.8 mEq/L — critical high for Sunita Sharma',
-    fullDetail:
-      'System flagged critical Potassium = 6.8 mEq/L for Sunita Sharma (IPD-2026-042) · Reference: 3.5–5.0 mEq/L · Marked CRITICAL HIGH · Attending physician Dr. Rajan Sinha notified via system alert · Repeat test ordered',
-    user: 'System',
-    module: 'Labs',
-  },
-];
 
 const TYPE_CONFIG = {
   registration: {
@@ -283,26 +102,43 @@ const KPI = [
   { label: 'Documents', value: 210, icon: FileText, color: '#64748b' },
 ];
 
-const patientCount = LOGS.filter((l) => l.module === 'Patients').length;
-const ipdCount = LOGS.filter((l) => l.module === 'IPD').length;
-const labCount = LOGS.filter((l) => l.module === 'Labs').length;
-const rxCount = LOGS.filter((l) => l.type === 'prescription').length;
-
-const STORAGE = [
-  { label: 'Patient Records', count: `${patientCount} files`, color: '#0891b2' },
-  { label: 'IPD Case Files', count: `${ipdCount} admissions`, color: '#2d6a9f' },
-  { label: 'Lab Reports', count: `${labCount} records`, color: '#5b8a3c' },
-  { label: 'Prescriptions', count: `${rxCount} records`, color: '#7c5a9b' },
-];
-
 export default function ActivityLog() {
+  const [logs, setLogs] = useState([]);
+  const [logsLoading, setLogsLoading] = useState(true);
+
+  useEffect(() => {
+    const unsub = subscribeLogs(
+      (data) => { setLogs(data); setLogsLoading(false); },
+      (err)  => { console.error('logs subscription error:', err); setLogsLoading(false); },
+    );
+    return unsub;
+  }, []);
+
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [moduleFilter, setModuleFilter] = useState('All modules');
   const [moduleOpen, setModuleOpen] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
 
-  const filtered = LOGS.filter((log) => {
+  const patientCount = logs.filter((l) => l.module === 'Patients').length;
+  const ipdCount = logs.filter((l) => l.module === 'IPD').length;
+  const labCount = logs.filter((l) => l.module === 'Labs').length;
+  const rxCount = logs.filter((l) => l.type === 'prescription').length;
+
+  const STORAGE = [
+    { label: 'Patient Records', count: `${patientCount} files`, color: '#0891b2' },
+    { label: 'IPD Case Files', count: `${ipdCount} admissions`, color: '#2d6a9f' },
+    { label: 'Lab Reports', count: `${labCount} records`, color: '#5b8a3c' },
+    { label: 'Prescriptions', count: `${rxCount} records`, color: '#7c5a9b' },
+  ];
+
+  if (logsLoading) return (
+    <div style={{ padding: 60, textAlign: 'center', color: 'var(--fg-on-light-muted)', fontSize: 14 }}>
+      Loading activity log…
+    </div>
+  );
+
+  const filtered = logs.filter((log) => {
     const matchType = typeFilter === 'all' || log.type === typeFilter;
     const matchModule = moduleFilter === 'All modules' || log.module === moduleFilter;
     const q = search.toLowerCase();
@@ -784,7 +620,7 @@ export default function ActivityLog() {
           </div>
 
           <div style={{ fontSize: 12, color: 'var(--fg-on-light-muted)', textAlign: 'right' }}>
-            Showing {filtered.length} of {LOGS.length} events
+            Showing {filtered.length} of {logs.length} events
           </div>
         </div>
 
@@ -928,7 +764,7 @@ export default function ActivityLog() {
                 marginBottom: 8,
               }}
             >
-              {(LOGS.length * 5).toLocaleString()}
+              {(logs.length * 5).toLocaleString()}
             </div>
             <div style={{ fontSize: 12, color: 'var(--fg-on-light-muted)', lineHeight: 1.6 }}>
               Estimated paper forms eliminated since go-live. Every digital record replaces an

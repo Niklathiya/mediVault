@@ -1,6 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
+import { getPatientFull, updatePatient, deletePatientSubItem } from '../firebase/services/patientService.js';
+import AddVisitModal        from '../components/modals/AddVisitModal.jsx';
+import AddPrescriptionModal from '../components/modals/AddPrescriptionModal.jsx';
+import AddLabModal          from '../components/modals/AddLabModal.jsx';
+import RecordVitalsModal    from '../components/modals/RecordVitalsModal.jsx';
+import AddDocumentModal     from '../components/modals/AddDocumentModal.jsx';
 import {
   ArrowLeft, FileText, ClipboardList, Pill, FlaskConical,
   Activity, Folder, Clock, Receipt, BedDouble, AlertTriangle,
@@ -8,112 +14,8 @@ import {
   AlertOctagon, Shield, X, Check, Trash2, ChevronRight, Eye,
 } from 'lucide-react';
 
-// ── DATA ─────────────────────────────────────────────────────────────────────
 
-const PATIENTS = {
-  'PT-0128': {
-    name: 'Kiran Desai', initials: 'KD', age: 34, sex: 'Male', blood: 'B+',
-    phone: '98765 43210', email: 'kiran.desai@email.com',
-    address: '12 MG Road, Bengaluru, Karnataka 560001',
-    registered: '10 Jun 2026', status: 'active',
-    hasAllergy: false, allergies: [],
-    tags: ['Diabetes', 'Hypertension'],
-    insurance: 'Star Health · POL-2024-98765',
-    emergency: { name: 'Priya Desai', relation: 'Spouse', phone: '98765 43211' },
-    visits: [
-      { id: 'V001', date: '2026-06-22', dateLabel: '22 Jun 2026', dateBig: '22', dateMonth: 'Jun 2026',
-        doctor: 'Dr. Priya Mehta', dept: 'General Medicine',
-        complaint: 'High blood sugar, fatigue, increased thirst',
-        diagnosis: 'Type 2 Diabetes — uncontrolled',
-        treatment: 'Metformin dose adjusted, dietary counselling',
-        notes: 'Patient advised to maintain food diary and follow up in 4 weeks.' },
-      { id: 'V002', date: '2026-06-08', dateLabel: '08 Jun 2026', dateBig: '08', dateMonth: 'Jun 2026',
-        doctor: 'Dr. Priya Mehta', dept: 'General Medicine',
-        complaint: 'Routine checkup, BP monitoring',
-        diagnosis: 'Hypertension — controlled',
-        treatment: 'Continue Amlodipine 5mg, low-sodium diet',
-        notes: 'BP improved since last visit. Weight stable.' },
-    ],
-    prescriptions: [
-      { id: 'RX001', date: '22 Jun 2026', drug: 'Metformin 500mg', dosage: '1-0-1', frequency: 'Twice daily', duration: '30 days', doctor: 'Dr. Priya Mehta' },
-      { id: 'RX002', date: '22 Jun 2026', drug: 'Amlodipine 5mg', dosage: '1-0-0', frequency: 'Once daily', duration: '30 days', doctor: 'Dr. Priya Mehta' },
-      { id: 'RX003', date: '08 Jun 2026', drug: 'Telmisartan 40mg', dosage: '0-0-1', frequency: 'Once daily (evening)', duration: '30 days', doctor: 'Dr. Priya Mehta' },
-    ],
-    labs: [
-      { id: 'L001', date: '20 Jun 2026', test: 'HbA1c', result: '7.2%', normal: '< 5.7%', status: 'High', statusColor: '#d9a441', statusBg: 'rgba(217,164,65,0.1)', doctor: 'Dr. Priya Mehta' },
-      { id: 'L002', date: '20 Jun 2026', test: 'Fasting Glucose', result: '126 mg/dL', normal: '70–100', status: 'High', statusColor: '#d9a441', statusBg: 'rgba(217,164,65,0.1)', doctor: 'Dr. Priya Mehta' },
-      { id: 'L003', date: '20 Jun 2026', test: 'Creatinine', result: '0.9 mg/dL', normal: '0.6–1.2', status: 'Normal', statusColor: '#15803d', statusBg: 'rgba(78,179,116,0.1)', doctor: 'Dr. Priya Mehta' },
-      { id: 'L004', date: '20 Jun 2026', test: 'Lipid Profile (LDL)', result: '138 mg/dL', normal: '< 100', status: 'High', statusColor: '#d9a441', statusBg: 'rgba(217,164,65,0.1)', doctor: 'Dr. Priya Mehta' },
-    ],
-    vitals: [
-      { id: 'VT001', date: '22 Jun 2026', bp: '138/88', bpSys: 138, bpDia: 88, pulse: '78', spo2: '98', temp: '98.4', wt: '72' },
-      { id: 'VT002', date: '08 Jun 2026', bp: '142/90', bpSys: 142, bpDia: 90, pulse: '82', spo2: '97', temp: '98.6', wt: '73' },
-    ],
-    billings: [
-      { id: 'INV-2026-0035', date: '22 Jun 2026', type: 'OPD', amount: 1200, paid: 1200, status: 'paid' },
-      { id: 'INV-2026-0020', date: '08 Jun 2026', type: 'OPD', amount: 800, paid: 800, status: 'paid' },
-    ],
-    admissions: [
-      { id: 'IPD-2026-042', ipNo: 'IP/2026/042', admittedOn: '2026-06-23', admittedTime: '09:15 AM',
-        admittingDoctor: 'Dr. Priya Mehta', ward: 'General', bedNo: '4A',
-        dischargedOn: null, dischargedTime: null, status: 'admitted' },
-    ],
-    documents: [
-      { id: 'DOC001', name: 'Blood Report June 2026', type: 'Lab Report', date: '20 Jun 2026', notes: 'HbA1c and FBS panel' },
-      { id: 'DOC002', name: 'ECG Report', type: 'Cardiology', date: '08 Jun 2026', notes: '' },
-    ],
-  },
-  'PT-0127': {
-    name: 'Meena Agarwal', initials: 'MA', age: 52, sex: 'Female', blood: 'O+',
-    phone: '87654 32109', email: 'meena.agarwal@email.com',
-    address: '45 Civil Lines, Allahabad, UP 211001',
-    registered: '08 Jun 2026', status: 'admitted',
-    hasAllergy: true, allergies: ['Penicillin', 'Aspirin'],
-    tags: ['Hypertension', 'Cardiac'],
-    insurance: 'Max Bupa · POL-002345',
-    emergency: { name: 'Ramesh Agarwal', relation: 'Husband', phone: '87654 00002' },
-    visits: [
-      { id: 'V003', date: '2026-06-08', dateLabel: '08 Jun 2026', dateBig: '08', dateMonth: 'Jun 2026',
-        doctor: 'Dr. Arjun Rao', dept: 'Cardiology',
-        complaint: 'Chest pain, shortness of breath',
-        diagnosis: 'Hypertensive crisis, suspected STEMI',
-        treatment: 'Admitted to ICU for monitoring and cardiac intervention',
-        notes: 'Referred to ICU. Cardiac team on standby.' },
-    ],
-    prescriptions: [
-      { id: 'RX004', date: '08 Jun 2026', drug: 'Amlodipine 10mg', dosage: '1-0-0', frequency: 'Once daily', duration: '30 days', doctor: 'Dr. Arjun Rao' },
-      { id: 'RX005', date: '08 Jun 2026', drug: 'Losartan 50mg', dosage: '1-0-0', frequency: 'Once daily', duration: '30 days', doctor: 'Dr. Arjun Rao' },
-      { id: 'RX006', date: '22 Jun 2026', drug: 'Atorvastatin 40mg', dosage: '0-0-1', frequency: 'Once daily (evening)', duration: '30 days', doctor: 'Dr. Arjun Rao' },
-    ],
-    labs: [
-      { id: 'L005', date: '09 Jun 2026', test: 'ECG', result: 'Sinus rhythm', normal: 'Normal sinus', status: 'Normal', statusColor: '#15803d', statusBg: 'rgba(78,179,116,0.1)', doctor: 'Dr. Arjun Rao' },
-      { id: 'L006', date: '09 Jun 2026', test: 'Troponin I', result: '0.12 ng/mL', normal: '< 0.04', status: 'High', statusColor: '#d95050', statusBg: 'rgba(217,80,80,0.1)', doctor: 'Dr. Arjun Rao' },
-    ],
-    vitals: [
-      { id: 'VT003', date: '22 Jun 2026', bp: '148/94', bpSys: 148, bpDia: 94, pulse: '84', spo2: '96', temp: '99.1', wt: '68' },
-      { id: 'VT004', date: '09 Jun 2026', bp: '158/98', bpSys: 158, bpDia: 98, pulse: '88', spo2: '96', temp: '99.1', wt: '68' },
-    ],
-    billings: [
-      { id: 'INV-2026-0040', date: '08 Jun 2026', type: 'IPD', amount: 55000, paid: 20000, status: 'partial' },
-    ],
-    admissions: [
-      { id: 'IPD-2026-041', ipNo: 'IP/2026/041', admittedOn: '2026-06-22', admittedTime: '02:30 PM',
-        admittingDoctor: 'Dr. Arjun Rao', ward: 'ICU', bedNo: '2',
-        dischargedOn: null, dischargedTime: null, status: 'admitted' },
-    ],
-    documents: [
-      { id: 'DOC003', name: 'ECG Strip — 09 Jun 2026', type: 'Cardiology', date: '09 Jun 2026', notes: 'STEMI pattern' },
-    ],
-  },
-};
 
-const DEFAULT_PATIENT = {
-  name: 'Patient', initials: 'PT', age: 0, sex: '-', blood: '-',
-  phone: '-', email: '-', address: '-', registered: '-',
-  status: 'active', hasAllergy: false, allergies: [], tags: [],
-  insurance: '', emergency: { name: '-', relation: '-', phone: '-' },
-  visits: [], prescriptions: [], labs: [], vitals: [], billings: [], admissions: [], documents: [],
-};
 
 const TABS = [
   { id: 'overview',      label: 'Overview',      icon: FileText },
@@ -152,7 +54,9 @@ const lbl = {
   color: 'var(--fg-on-light-muted)', marginBottom: 4,
 };
 
-const TODAY = '2026-06-28';
+const TODAY = new Date().toISOString().slice(0, 10);
+const daysBetween = (a, b) =>
+  Math.max(1, Math.floor((new Date(b || TODAY) - new Date(a)) / 86400000) + 1);
 
 const fmtDate = (iso) => {
   if (!iso) return '—';
@@ -160,9 +64,6 @@ const fmtDate = (iso) => {
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   return `${d} ${months[+m - 1]} ${y}`;
 };
-
-const daysBetween = (a, b) =>
-  Math.max(1, Math.floor((new Date(b || TODAY) - new Date(a)) / 86400000) + 1);
 
 // ── ICON BUTTONS ─────────────────────────────────────────────────────────────
 
@@ -219,9 +120,29 @@ export default function PatientDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [tab, setTab]         = useState('overview');
-  const [patient, setPatient] = useState(PATIENTS[id] ?? { ...DEFAULT_PATIENT });
-  const [editOpen, setEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState(null);
+  const [patient, setPatient] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [editOpen, setEditOpen]               = useState(false);
+  const [editForm, setEditForm]               = useState(null);
+  const [visitModal, setVisitModal]           = useState(false);
+  const [prescriptionModal, setPrescriptionModal] = useState(false);
+  const [labModal, setLabModal]               = useState(false);
+  const [vitalsModal, setVitalsModal]         = useState(false);
+  const [documentModal, setDocumentModal]     = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    getPatientFull(id).then((data) => {
+      setPatient(data);
+      setLoading(false);
+    });
+  }, [id]);
+
+  if (loading || !patient) return (
+    <div style={{ padding: 60, textAlign: 'center', color: 'var(--fg-on-light-muted)', fontSize: 14 }}>
+      {loading ? 'Loading patient…' : 'Patient not found.'}
+    </div>
+  );
 
   const patientAllergies = patient.allergies ?? [];
   const patientTags      = patient.tags ?? [];
@@ -234,8 +155,8 @@ export default function PatientDetail() {
       name: patient.name, age: String(patient.age), sex: patient.sex, blood: patient.blood,
       phone: patient.phone, email: patient.email, address: patient.address,
       allergies: patientAllergies.join(', '), tags: patientTags.join(', '),
-      emergencyName: patient.emergency.name, emergencyRelation: patient.emergency.relation,
-      emergencyPhone: patient.emergency.phone, insurance: patient.insurance || '',
+      emergencyName: patient.emergency?.name || '', emergencyRelation: patient.emergency?.relation || '',
+      emergencyPhone: patient.emergency?.phone || '', insurance: patient.insurance || '',
     });
     setEditOpen(true);
   };
@@ -243,25 +164,31 @@ export default function PatientDetail() {
   const closeEdit = () => { setEditOpen(false); setEditForm(null); };
   const setField  = (k, v) => setEditForm((f) => ({ ...f, [k]: v }));
 
-  const saveEdit = () => {
-    if (!editForm) return;
+  const saveEdit = async () => {
+    if (!editForm || !patient) return;
     const newAllergies = editForm.allergies.split(',').map((s) => s.trim()).filter(Boolean);
-    setPatient((prev) => ({
-      ...prev,
-      name: editForm.name || prev.name,
-      age: parseInt(editForm.age) || prev.age,
+    const updates = {
+      name: editForm.name || patient.name,
+      age: parseInt(editForm.age) || patient.age,
       sex: editForm.sex, blood: editForm.blood,
       phone: editForm.phone, email: editForm.email, address: editForm.address,
       allergies: newAllergies, hasAllergy: newAllergies.length > 0,
       tags: editForm.tags.split(',').map((s) => s.trim()).filter(Boolean),
       emergency: { name: editForm.emergencyName, relation: editForm.emergencyRelation, phone: editForm.emergencyPhone },
       insurance: editForm.insurance,
-    }));
+    };
+    await updatePatient(id, updates);
+    setPatient((prev) => ({ ...prev, ...updates }));
     closeEdit();
   };
 
-  const removeItem = (key, itemId) =>
-    setPatient((prev) => ({ ...prev, [key]: prev[key].filter((i) => i.id !== itemId) }));
+  const removeItem = (key, itemId) => {
+    deletePatientSubItem(id, key, itemId);
+    setPatient((prev) => ({ ...prev, [key]: (prev[key] || []).filter((i) => i.id !== itemId) }));
+  };
+
+  const addItem = (subcol, item) =>
+    setPatient((prev) => ({ ...prev, [subcol]: [item, ...(prev[subcol] || [])] }));
 
   const fmt = (n) => '₹' + n.toLocaleString('en-IN');
 
@@ -443,7 +370,7 @@ export default function PatientDetail() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <div style={{ fontSize: 13, color: C.muted }}>Chronological clinical visit history</div>
-              <button className="btn-primary" style={{ fontSize: 13 }}>
+              <button className="btn-primary" style={{ fontSize: 13 }} onClick={() => setVisitModal(true)}>
                 <Plus size={14} /> Add visit
               </button>
             </div>
@@ -492,7 +419,7 @@ export default function PatientDetail() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <div style={{ fontSize: 13, color: C.muted }}>All medications prescribed to this patient</div>
-              <button className="btn-primary" style={{ fontSize: 13 }}><Plus size={14} /> Add prescription</button>
+              <button className="btn-primary" style={{ fontSize: 13 }} onClick={() => setPrescriptionModal(true)}><Plus size={14} /> Add prescription</button>
             </div>
             <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.8fr 1fr 0.8fr 1.2fr 76px', padding: '12px 20px', background: C.subtleBg, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, fontWeight: 600 }}>
@@ -526,7 +453,7 @@ export default function PatientDetail() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <div style={{ fontSize: 13, color: C.muted }}>Diagnostic lab tests and reports</div>
-              <button className="btn-primary" style={{ fontSize: 13 }}><Plus size={14} /> Add lab result</button>
+              <button className="btn-primary" style={{ fontSize: 13 }} onClick={() => setLabModal(true)}><Plus size={14} /> Add lab result</button>
             </div>
             <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1fr 0.8fr 76px', padding: '12px 20px', background: C.subtleBg, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, fontWeight: 600 }}>
@@ -564,7 +491,7 @@ export default function PatientDetail() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <div style={{ fontSize: 13, color: C.muted }}>Recorded vital signs over time</div>
-              <button className="btn-primary" style={{ fontSize: 13 }}><Plus size={14} /> Record vitals</button>
+              <button className="btn-primary" style={{ fontSize: 13 }} onClick={() => setVitalsModal(true)}><Plus size={14} /> Record vitals</button>
             </div>
             {/* BP trend chart */}
             {patient.vitals.length > 0 && (
@@ -647,7 +574,7 @@ export default function PatientDetail() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <div style={{ fontSize: 13, color: C.muted }}>Scanned reports, X-rays, consent forms, etc.</div>
-              <button className="btn-primary" style={{ fontSize: 13 }}><Plus size={14} /> Add document</button>
+              <button className="btn-primary" style={{ fontSize: 13 }} onClick={() => setDocumentModal(true)}><Plus size={14} /> Add document</button>
             </div>
             {patient.documents.length === 0 ? (
               <div style={{ textAlign: 'center', padding: 48, color: C.muted, background: C.surface, border: `1px dashed ${C.border}`, borderRadius: 12 }}>
@@ -827,6 +754,38 @@ export default function PatientDetail() {
           </div>
         )}
       </div>
+
+      {/* Add modals */}
+      <AddVisitModal
+        open={visitModal}
+        patientId={id}
+        onAdd={(item) => addItem('visits', item)}
+        onClose={() => setVisitModal(false)}
+      />
+      <AddPrescriptionModal
+        open={prescriptionModal}
+        patientId={id}
+        onAdd={(item) => addItem('prescriptions', item)}
+        onClose={() => setPrescriptionModal(false)}
+      />
+      <AddLabModal
+        open={labModal}
+        patientId={id}
+        onAdd={(item) => addItem('labs', item)}
+        onClose={() => setLabModal(false)}
+      />
+      <RecordVitalsModal
+        open={vitalsModal}
+        patientId={id}
+        onAdd={(item) => addItem('vitals', item)}
+        onClose={() => setVitalsModal(false)}
+      />
+      <AddDocumentModal
+        open={documentModal}
+        patientId={id}
+        onAdd={(item) => addItem('documents', item)}
+        onClose={() => setDocumentModal(false)}
+      />
 
       {/* Edit modal */}
       {isEditOpen && createPortal(

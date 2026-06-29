@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
+import { subscribeStaffByRole, addStaff, updateStaff, deleteStaff } from '../firebase/services/staffService.js';
 import {
   Stethoscope,
   HeartPulse,
@@ -19,305 +20,6 @@ import {
   ChevronDown,
 } from 'lucide-react';
 
-// ── DATA ─────────────────────────────────────────────────────────────────────
-
-const STAFF = {
-  doctors: [
-    {
-      id: 'D001',
-      initials: 'PM',
-      name: 'Dr. Priya Mehta',
-      specialization: 'General Surgery',
-      qualification: 'MS, MBBS',
-      dept: 'Surgery',
-      regNo: 'MH-GMC-14821',
-      phone: '98001 11001',
-      email: 'p.mehta@medivault.org',
-      joiningDate: '15 Mar 2010',
-      status: 'Active',
-    },
-    {
-      id: 'D002',
-      initials: 'AR',
-      name: 'Dr. Arjun Rao',
-      specialization: 'Interventional Cardiology',
-      qualification: 'DM, MD, MBBS',
-      dept: 'Cardiology',
-      regNo: 'MH-GMC-18304',
-      phone: '98001 11002',
-      email: 'a.rao@medivault.org',
-      joiningDate: '03 Jul 2013',
-      status: 'Active',
-    },
-    {
-      id: 'D003',
-      initials: 'KS',
-      name: 'Dr. Kavita Singh',
-      specialization: 'Obstetrics & Gynaecology',
-      qualification: 'MS (OBG), MBBS',
-      dept: 'Maternity',
-      regNo: 'MH-GMC-20117',
-      phone: '98001 11003',
-      email: 'k.singh@medivault.org',
-      joiningDate: '20 Jan 2015',
-      status: 'Active',
-    },
-    {
-      id: 'D004',
-      initials: 'RI',
-      name: 'Dr. Rajan Iyer',
-      specialization: 'Orthopaedic Surgery',
-      qualification: 'MS (Ortho), MBBS',
-      dept: 'Orthopaedics',
-      regNo: 'MH-GMC-09842',
-      phone: '98001 11004',
-      email: 'r.iyer@medivault.org',
-      joiningDate: '01 Apr 2008',
-      status: 'On Leave',
-    },
-    {
-      id: 'D005',
-      initials: 'NP',
-      name: 'Dr. Neha Patel',
-      specialization: 'Paediatrics',
-      qualification: 'MD (Paed), MBBS',
-      dept: 'Paediatrics',
-      regNo: 'MH-GMC-22508',
-      phone: '98001 11005',
-      email: 'n.patel@medivault.org',
-      joiningDate: '10 Sep 2017',
-      status: 'Active',
-    },
-    {
-      id: 'D006',
-      initials: 'VK',
-      name: 'Dr. Vivek Kulkarni',
-      specialization: 'Neurology',
-      qualification: 'DM (Neuro), MD, MBBS',
-      dept: 'Neurology',
-      regNo: 'MH-GMC-16634',
-      phone: '98001 11006',
-      email: 'v.kulkarni@medivault.org',
-      joiningDate: '22 Feb 2012',
-      status: 'Active',
-    },
-  ],
-  nurses: [
-    {
-      id: 'N001',
-      initials: 'LV',
-      name: 'Lata Verma',
-      designation: 'Head Nurse',
-      ward: 'ICU',
-      shift: 'Day',
-      regNo: 'NMC-22341',
-      phone: '98002 22001',
-      email: 'l.verma@medivault.org',
-      joiningDate: '01 Jan 2012',
-      status: 'Active',
-    },
-    {
-      id: 'N002',
-      initials: 'SJ',
-      name: 'Sunita Joshi',
-      designation: 'Staff Nurse',
-      ward: 'General',
-      shift: 'Night',
-      regNo: 'NMC-28904',
-      phone: '98002 22002',
-      email: 's.joshi@medivault.org',
-      joiningDate: '15 Jun 2016',
-      status: 'Active',
-    },
-    {
-      id: 'N003',
-      initials: 'MN',
-      name: 'Meera Nair',
-      designation: 'ICU Nurse',
-      ward: 'ICU',
-      shift: 'Rotation',
-      regNo: 'NMC-31205',
-      phone: '98002 22003',
-      email: 'm.nair@medivault.org',
-      joiningDate: '08 Mar 2019',
-      status: 'Active',
-    },
-    {
-      id: 'N004',
-      initials: 'RS',
-      name: 'Rekha Sharma',
-      designation: 'Staff Nurse',
-      ward: 'Maternity',
-      shift: 'Day',
-      regNo: 'NMC-29678',
-      phone: '98002 22004',
-      email: 'r.sharma@medivault.org',
-      joiningDate: '20 Oct 2018',
-      status: 'On Leave',
-    },
-    {
-      id: 'N005',
-      initials: 'PA',
-      name: 'Pooja Ahuja',
-      designation: 'Nursing Assistant',
-      ward: 'Semi-Private',
-      shift: 'Night',
-      regNo: 'NMC-34512',
-      phone: '98002 22005',
-      email: 'p.ahuja@medivault.org',
-      joiningDate: '05 May 2021',
-      status: 'Active',
-    },
-  ],
-  paramedical: [
-    {
-      id: 'P001',
-      initials: 'RK',
-      name: 'Ravi Kumar',
-      role: 'Lab Technician',
-      dept: 'Pathology',
-      qualification: 'DMLT',
-      phone: '98003 33001',
-      email: 'r.kumar@medivault.org',
-      joiningDate: '01 Apr 2018',
-      status: 'Active',
-    },
-    {
-      id: 'P002',
-      initials: 'AD',
-      name: 'Asha Devi',
-      role: 'Radiologist Technician',
-      dept: 'Radiology',
-      qualification: 'B.Sc Radiology',
-      phone: '98003 33002',
-      email: 'a.devi@medivault.org',
-      joiningDate: '12 Nov 2015',
-      status: 'Active',
-    },
-    {
-      id: 'P003',
-      initials: 'MD',
-      name: 'Mohan Das',
-      role: 'Physiotherapist',
-      dept: 'Physiotherapy',
-      qualification: 'BPTh',
-      phone: '98003 33003',
-      email: 'm.das@medivault.org',
-      joiningDate: '18 Feb 2020',
-      status: 'Active',
-    },
-    {
-      id: 'P004',
-      initials: 'SP',
-      name: 'Swati Pillai',
-      role: 'Pharmacist',
-      dept: 'Pharmacy',
-      qualification: 'B.Pharm',
-      phone: '98003 33004',
-      email: 's.pillai@medivault.org',
-      joiningDate: '07 Aug 2019',
-      status: 'Active',
-    },
-  ],
-  admin: [
-    {
-      id: 'A001',
-      initials: 'SG',
-      name: 'Sanjay Gupta',
-      role: 'Administrator',
-      dept: 'Administration',
-      phone: '98004 44001',
-      email: 's.gupta@medivault.org',
-      joiningDate: '01 Jun 2009',
-      status: 'Active',
-    },
-    {
-      id: 'A002',
-      initials: 'AT',
-      name: 'Anita Tiwari',
-      role: 'Accounts Officer',
-      dept: 'Finance',
-      phone: '98004 44002',
-      email: 'a.tiwari@medivault.org',
-      joiningDate: '10 Mar 2014',
-      status: 'Active',
-    },
-    {
-      id: 'A003',
-      initials: 'VS',
-      name: 'Vikram Singh',
-      role: 'Receptionist',
-      dept: 'Front Desk',
-      phone: '98004 44003',
-      email: 'v.singh@medivault.org',
-      joiningDate: '25 Jul 2017',
-      status: 'Active',
-    },
-    {
-      id: 'A004',
-      initials: 'PM',
-      name: 'Pallavi Mishra',
-      role: 'Medical Records Officer',
-      dept: 'Records',
-      phone: '98004 44004',
-      email: 'p.mishra@medivault.org',
-      joiningDate: '14 Jan 2020',
-      status: 'Active',
-    },
-  ],
-  support: [
-    {
-      id: 'S001',
-      initials: 'GY',
-      name: 'Ganesh Yadav',
-      role: 'Security Guard',
-      shift: 'Day',
-      phone: '98005 55001',
-      joiningDate: '01 Mar 2016',
-      status: 'Active',
-    },
-    {
-      id: 'S002',
-      initials: 'KD',
-      name: 'Kamla Devi',
-      role: 'Housekeeping',
-      shift: 'Day',
-      phone: '98005 55002',
-      joiningDate: '15 Sep 2018',
-      status: 'Active',
-    },
-    {
-      id: 'S003',
-      initials: 'RB',
-      name: 'Ramu Bhai',
-      role: 'Ward Boy',
-      shift: 'Night',
-      phone: '98005 55003',
-      joiningDate: '20 Feb 2020',
-      status: 'Active',
-    },
-    {
-      id: 'S004',
-      initials: 'SA',
-      name: 'Santosh Ahir',
-      role: 'Ambulance Driver',
-      shift: 'Rotation',
-      phone: '98005 55004',
-      joiningDate: '11 Nov 2017',
-      status: 'On Leave',
-    },
-    {
-      id: 'S005',
-      initials: 'BD',
-      name: 'Bhavna Desai',
-      role: 'Laundry Staff',
-      shift: 'Day',
-      phone: '98005 55005',
-      joiningDate: '05 Apr 2019',
-      status: 'Active',
-    },
-  ],
-};
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
 
@@ -1108,77 +810,60 @@ function StaffModal({ tab, member, onClose, onSave }) {
 export default function Staff() {
   const location = useLocation();
   const tab = TABS.find((t) => location.pathname.endsWith(t.key))?.key ?? 'doctors';
-  const [staff, setStaff] = useState(STAFF);
-  const [modal, setModal] = useState(null); // { mode: 'add'|'edit', member }
 
-  const members = staff[tab] ?? [];
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal]     = useState(null); // { mode: 'add'|'edit', member }
+
+  useEffect(() => {
+    setLoading(true);
+    const unsub = subscribeStaffByRole(
+      tab,
+      (data) => { setMembers(data); setLoading(false); },
+      (err)  => { console.error('staff subscription error:', err); setLoading(false); },
+    );
+    return unsub;
+  }, [tab]);
+
   const meta = TAB_META[tab];
 
-  const openAdd = () => setModal({ mode: 'add', member: null });
+  const openAdd  = () => setModal({ mode: 'add',  member: null });
   const openEdit = (m) => setModal({ mode: 'edit', member: m });
   const closeModal = () => setModal(null);
 
+  const isOpen      = modal !== null;
+  const modalMember = modal !== null ? modal.member : null;
+  const modalMode   = modal !== null ? modal.mode   : null;
+
   const deleteMember = (id) => {
     if (!window.confirm('Remove this staff member?')) return;
-    setStaff((s) => ({ ...s, [tab]: s[tab].filter((m) => m.id !== id) }));
+    deleteStaff(id);
   };
 
-  const saveMember = (formData) => {
+  const saveMember = async (formData) => {
     if (modalMode === 'add') {
-      const prefix = { doctors: 'D', nurses: 'N', paramedical: 'P', admin: 'A', support: 'S' };
-      const id = `${prefix[tab]}${String(staff[tab].length + 1).padStart(3, '0')}`;
-      const words = formData.name.trim().split(' ');
-      const initials = words
-        .map((w) => w[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase();
-      setStaff((s) => ({ ...s, [tab]: [...s[tab], { ...formData, id, initials }] }));
+      await addStaff(tab, formData, members.length);
     } else {
-      setStaff((s) => ({
-        ...s,
-        [tab]: s[tab].map((m) => (m.id === modalMember?.id ? { ...m, ...formData } : m)),
-      }));
+      await updateStaff(modalMember.id, { ...formData });
     }
     closeModal();
   };
 
-  const isOpen = modal !== null;
-  const modalMember = modal !== null ? modal.member : null;
-  const modalMode = modal !== null ? modal.mode : null;
+  if (loading) return (
+    <div style={{ padding: 60, textAlign: 'center', color: 'var(--fg-on-light-muted)', fontSize: 14 }}>
+      Loading staff…
+    </div>
+  );
 
   return (
     <div style={{ animation: 'mv-fade 200ms ease both' }}>
       {/* Header */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'flex-end',
-          justifyContent: 'space-between',
-          marginBottom: 20,
-        }}
-      >
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
-          <div
-            style={{
-              fontSize: 11,
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              color: 'var(--fg-on-light-muted)',
-              fontWeight: 600,
-            }}
-          >
+          <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-on-light-muted)', fontWeight: 600 }}>
             {members.length} {meta.plural}
           </div>
-          <h1
-            style={{
-              fontSize: 34,
-              fontWeight: 300,
-              letterSpacing: '-0.02em',
-              margin: '8px 0 0',
-              color: 'var(--fg-on-light)',
-            }}
-          >
+          <h1 style={{ fontSize: 34, fontWeight: 300, letterSpacing: '-0.02em', margin: '8px 0 0', color: 'var(--fg-on-light)' }}>
             {meta.title}
           </h1>
         </div>
@@ -1188,37 +873,22 @@ export default function Staff() {
       </div>
 
       {/* Staff grid */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: tab === 'support' ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)',
-          gap: 14,
-        }}
-      >
+      <div style={{ display: 'grid', gridTemplateColumns: tab === 'support' ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)', gap: 14 }}>
         {members.map((m) => (
           <StaffCard key={m.id} m={m} tab={tab} onEdit={openEdit} onDelete={deleteMember} />
         ))}
         {members.length === 0 && (
-          <div
-            style={{
-              gridColumn: '1 / -1',
-              textAlign: 'center',
-              padding: '48px 0',
-              color: 'var(--fg-on-light-muted)',
-              fontSize: 14,
-            }}
-          >
-            No {meta.plural} found. Click "{meta.addLabel}" to add one.
+          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '48px 0', color: 'var(--fg-on-light-muted)', fontSize: 14 }}>
+            No {meta.plural} found. Click &ldquo;{meta.addLabel}&rdquo; to add one.
           </div>
         )}
       </div>
 
       {/* Add / Edit modal */}
-      {isOpen &&
-        createPortal(
-          <StaffModal tab={tab} member={modalMember} onClose={closeModal} onSave={saveMember} />,
-          document.body,
-        )}
+      {isOpen && createPortal(
+        <StaffModal tab={tab} member={modalMember} onClose={closeModal} onSave={saveMember} />,
+        document.body,
+      )}
     </div>
   );
 }

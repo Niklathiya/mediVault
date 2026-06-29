@@ -1,99 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { Plus, AlertTriangle, X, Pencil, Archive, Check } from 'lucide-react';
 import CustomSelect from '../components/ui/CustomSelect';
-
-const INIT_PATIENTS = [
-  {
-    id: 'PT-0128', name: 'Kiran Desai', initials: 'KD',
-    dob: '1992-03-14', age: '34', sex: 'Male', blood: 'B+',
-    phone: '98765 43210', email: 'kiran.desai@email.com',
-    address: '12 MG Road, Bengaluru, Karnataka 560001',
-    allergies: '',
-    tags: ['Diabetes', 'Hypertension'],
-    emergencyName: 'Priya Desai', emergencyRelation: 'Spouse', emergencyPhone: '98765 00001',
-    insurance: 'Star Health · POL-001234',
-    status: 'active', hasAllergy: false, reg: '10 Jun 2026',
-  },
-  {
-    id: 'PT-0127', name: 'Meena Agarwal', initials: 'MA',
-    dob: '1974-07-22', age: '52', sex: 'Female', blood: 'O+',
-    phone: '87654 32109', email: 'meena.agarwal@email.com',
-    address: '45 Civil Lines, Allahabad, UP 211001',
-    allergies: 'Penicillin, Aspirin',
-    tags: ['Hypertension'],
-    emergencyName: 'Ramesh Agarwal', emergencyRelation: 'Husband', emergencyPhone: '87654 00002',
-    insurance: 'Max Bupa · POL-002345',
-    status: 'admitted', hasAllergy: true, reg: '08 Jun 2026',
-  },
-  {
-    id: 'PT-0126', name: 'Suresh Rao', initials: 'SR',
-    dob: '1958-11-05', age: '67', sex: 'Male', blood: 'A+',
-    phone: '76543 21098', email: 'suresh.rao@email.com',
-    address: '78 Anna Salai, Chennai, TN 600002',
-    allergies: '',
-    tags: ['Cardiac', 'Diabetes'],
-    emergencyName: 'Kavitha Rao', emergencyRelation: 'Daughter', emergencyPhone: '76543 00003',
-    insurance: 'HDFC Ergo · POL-003456',
-    status: 'discharged', hasAllergy: false, reg: '05 Jun 2026',
-  },
-  {
-    id: 'PT-0125', name: 'Anjali Shah', initials: 'AS',
-    dob: '1998-01-30', age: '28', sex: 'Female', blood: 'AB-',
-    phone: '65432 10987', email: 'anjali.shah@email.com',
-    address: '9 Satellite Road, Ahmedabad, GJ 380015',
-    allergies: 'Latex',
-    tags: [],
-    emergencyName: 'Nikhil Shah', emergencyRelation: 'Brother', emergencyPhone: '65432 00004',
-    insurance: '',
-    status: 'admitted', hasAllergy: true, reg: '02 Jun 2026',
-  },
-  {
-    id: 'PT-0124', name: 'Mohan Trivedi', initials: 'MT',
-    dob: '1981-06-18', age: '45', sex: 'Male', blood: 'O-',
-    phone: '54321 09876', email: 'mohan.trivedi@email.com',
-    address: '33 Residency Road, Indore, MP 452001',
-    allergies: '',
-    tags: ['Asthma'],
-    emergencyName: 'Sunita Trivedi', emergencyRelation: 'Wife', emergencyPhone: '54321 00005',
-    insurance: 'Oriental Insurance · POL-004567',
-    status: 'active', hasAllergy: false, reg: '30 May 2026',
-  },
-  {
-    id: 'PT-0123', name: 'Lakshmi Nair', initials: 'LN',
-    dob: '1988-09-10', age: '38', sex: 'Female', blood: 'A-',
-    phone: '43210 98765', email: 'lakshmi.nair@email.com',
-    address: '22 Pattom, Thiruvananthapuram, KL 695004',
-    allergies: '',
-    tags: ['Thyroid'],
-    emergencyName: 'Arun Nair', emergencyRelation: 'Husband', emergencyPhone: '43210 00006',
-    insurance: 'LIC Health · POL-005678',
-    status: 'active', hasAllergy: false, reg: '28 May 2026',
-  },
-  {
-    id: 'PT-0122', name: 'Deepak Verma', initials: 'DV',
-    dob: '1969-12-25', age: '55', sex: 'Male', blood: 'B-',
-    phone: '32109 87654', email: 'deepak.verma@email.com',
-    address: '5 Civil Lines, Lucknow, UP 226001',
-    allergies: '',
-    tags: ['Cardiac'],
-    emergencyName: 'Seema Verma', emergencyRelation: 'Wife', emergencyPhone: '32109 00007',
-    insurance: 'United India · POL-006789',
-    status: 'archived', hasAllergy: false, reg: '15 May 2026',
-  },
-  {
-    id: 'PT-0121', name: 'Sonal Mehta', initials: 'SM',
-    dob: '1983-04-02', age: '41', sex: 'Female', blood: 'AB+',
-    phone: '21098 76543', email: 'sonal.mehta@email.com',
-    address: '16 Koregaon Park, Pune, MH 411001',
-    allergies: 'Sulfa drugs',
-    tags: ['Diabetes'],
-    emergencyName: 'Rajesh Mehta', emergencyRelation: 'Husband', emergencyPhone: '21098 00008',
-    insurance: 'Care Health · POL-007890',
-    status: 'archived', hasAllergy: true, reg: '10 May 2026',
-  },
-];
+import { subscribePatients, updatePatient, toggleArchivePatient } from '../firebase/services/patientService.js';
 
 const STATUS_BADGE = {
   active:     { label: 'Active',     color: '#15803d', bg: 'rgba(78,179,116,0.12)' },
@@ -135,11 +45,27 @@ const calculateAge = (dob) => {
   return String(age);
 };
 
+const fmtReg = (iso) => {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${d} ${months[+m - 1]} ${y}`;
+};
+
 export default function Patients() {
   const navigate = useNavigate();
   const { openRegisterModal } = useOutletContext();
 
-  const [patients, setPatients] = useState(INIT_PATIENTS);
+  const [patients, setPatients] = useState([]);
+  const [loading, setLoading]   = useState(true);
+
+  useEffect(() => {
+    const unsub = subscribePatients(
+      (data) => { setPatients(data); setLoading(false); },
+      (err)  => { console.error('patients subscription error:', err); setLoading(false); },
+    );
+    return unsub;
+  }, []);
   const [statusFilter, setStatusFilter] = useState('all');
   const [bloodFilter, setBloodFilter]   = useState('all');
   const [tagFilter, setTagFilter]       = useState('all');
@@ -165,28 +91,27 @@ export default function Patients() {
   const clearFilters = () => { setStatusFilter('all'); setBloodFilter('all'); setTagFilter('all'); };
 
   const archivePatient = (id) => {
-    setPatients((ps) =>
-      ps.map((p) => p.id === id ? { ...p, status: p.status === 'archived' ? 'active' : 'archived' } : p)
-    );
+    const p = patients.find((pt) => pt.id === id);
+    if (p) toggleArchivePatient(id, p.status);
   };
 
   const openEdit = (p) => {
     setEditId(p.id);
     setEditForm({
       name:              p.name,
-      dob:               p.dob,
+      dob:               p.dob || '',
       age:               p.age,
       sex:               p.sex,
       blood:             p.blood,
       phone:             p.phone,
       email:             p.email,
       address:           p.address,
-      allergies:         p.allergies,
-      tags:              p.tags.join(', '),
-      emergencyName:     p.emergencyName,
-      emergencyRelation: p.emergencyRelation,
-      emergencyPhone:    p.emergencyPhone,
-      insurance:         p.insurance,
+      allergies:         Array.isArray(p.allergies) ? p.allergies.join(', ') : (p.allergies || ''),
+      tags:              Array.isArray(p.tags) ? p.tags.join(', ') : (p.tags || ''),
+      emergencyName:     p.emergency?.name || '',
+      emergencyRelation: p.emergency?.relation || '',
+      emergencyPhone:    p.emergency?.phone || '',
+      insurance:         p.insurance || '',
       status:            p.status,
     });
     setEditOpen(true);
@@ -200,36 +125,20 @@ export default function Patients() {
 
   const setField = (k, v) => setEditForm((f) => ({ ...f, [k]: v }));
 
-  const saveEdit = () => {
-    setPatients((ps) =>
-      ps.map((p) => {
-        if (p.id !== editId) return p;
-        const newName    = ef.name.trim() || p.name;
-        const initials   = newName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
-        const tagsArr    = ef.tags.split(',').map((s) => s.trim()).filter(Boolean);
-        const allergyArr = ef.allergies.split(',').map((s) => s.trim()).filter(Boolean);
-        return {
-          ...p,
-          name:              newName,
-          initials,
-          dob:               ef.dob,
-          age:               ef.age,
-          sex:               ef.sex,
-          blood:             ef.blood,
-          phone:             ef.phone,
-          email:             ef.email,
-          address:           ef.address,
-          allergies:         ef.allergies,
-          hasAllergy:        allergyArr.length > 0,
-          tags:              tagsArr,
-          emergencyName:     ef.emergencyName,
-          emergencyRelation: ef.emergencyRelation,
-          emergencyPhone:    ef.emergencyPhone,
-          insurance:         ef.insurance,
-          status:            ef.status,
-        };
-      })
-    );
+  const saveEdit = async () => {
+    const newName    = ef.name.trim();
+    const initials   = newName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+    const tagsArr    = ef.tags.split(',').map((s) => s.trim()).filter(Boolean);
+    const allergyArr = ef.allergies.split(',').map((s) => s.trim()).filter(Boolean);
+    await updatePatient(editId, {
+      name: newName, initials,
+      dob: ef.dob, age: ef.age, sex: ef.sex, blood: ef.blood,
+      phone: ef.phone, email: ef.email, address: ef.address,
+      allergies: allergyArr, hasAllergy: allergyArr.length > 0,
+      tags: tagsArr,
+      emergency: { name: ef.emergencyName, relation: ef.emergencyRelation, phone: ef.emergencyPhone },
+      insurance: ef.insurance, status: ef.status,
+    });
     closeEdit();
   };
 
@@ -245,6 +154,12 @@ export default function Patients() {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     cursor: 'pointer', color: 'var(--fg-on-light)', flexShrink: 0,
   };
+
+  if (loading) return (
+    <div style={{ padding: 60, textAlign: 'center', color: 'var(--fg-on-light-muted)', fontSize: 14 }}>
+      Loading patients…
+    </div>
+  );
 
   return (
     <div style={{ animation: 'mv-fade 200ms ease both' }}>
@@ -323,7 +238,7 @@ export default function Patients() {
                       {p.name}
                       {p.hasAllergy && <AlertTriangle size={13} color="#d95050" />}
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--fg-on-light-muted)' }}>{p.id} · Reg {p.reg}</div>
+                    <div style={{ fontSize: 11, color: 'var(--fg-on-light-muted)' }}>{p.id} · Reg {fmtReg(p.registered)}</div>
                   </div>
                 </div>
 
