@@ -16,7 +16,7 @@ import {
   ChevronRight,
   Settings,
 } from 'lucide-react';
-import { useRBAC } from '../../context/RBACContext';
+import { useRBAC } from '../../context/useRBAC';
 
 const NAV_ITEM_STYLE = {
   display: 'flex',

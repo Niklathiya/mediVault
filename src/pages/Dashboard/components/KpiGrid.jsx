@@ -1,5 +1,5 @@
 import { Users, FlaskConical, BedDouble, IndianRupee } from 'lucide-react';
-import { useRBAC } from '../../../context/RBACContext';
+import { useRBAC } from '../../../context/useRBAC';
 
 export default function KpiGrid() {
   const { canSeeDashboardIpd, canSeeDashboardRevenue } = useRBAC();

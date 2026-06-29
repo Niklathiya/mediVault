@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -6,7 +6,8 @@ import {
   dischargeAdmission,
   updateAdmission,
 } from '../firebase/services/admissionService.js';
-import { useRBAC } from '../context/RBACContext';
+import { getPatientPendingBills } from '../firebase/services/billingService.js';
+import { useRBAC } from '../context/useRBAC';
 import {
   ArrowLeft,
   LayoutGrid,
@@ -33,9 +34,23 @@ import {
   Plus,
   Pencil,
   Trash2,
+  Info,
 } from 'lucide-react';
 
 const TODAY = new Date().toISOString().slice(0, 10);
+
+const FREQ_TIMES = {
+  OD: ['08:00'],
+  BD: ['08:00', '20:00'],
+  TDS: ['08:00', '14:00', '20:00'],
+  Q4H: ['06:00', '10:00', '14:00', '18:00', '22:00', '02:00'],
+  Q6H: ['06:00', '12:00', '18:00', '00:00'],
+  Q8H: ['06:00', '14:00', '22:00'],
+  Q12H: ['08:00', '20:00'],
+  HS: ['22:00'],
+  STAT: ['STAT'],
+  SOS: ['SOS'],
+};
 
 const fmtDate = (iso) => {
   if (!iso) return '—';
@@ -597,9 +612,9 @@ export default function AdmissionDetail() {
   const [editEntryInfo, setEditEntryInfo] = useState(null); // { type, index, item }
   const [invSubTab, setInvSubTab] = useState('pathology');
   const [procSubTab, setProcSubTab] = useState('equipment');
-  const [treatView, setTreatView] = useState('list');
   const [adm, setAdm] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [pendingBills, setPendingBills] = useState(null); // null = hidden; array = show blocking modal
 
   // Adjust state during render when id changes to avoid synchronous setState inside useEffect
   const [prevId, setPrevId] = useState(id);
@@ -726,9 +741,15 @@ export default function AdmissionDetail() {
 
   const handleDeleteCasefileItem = async (subKey, index) => {
     const labels = {
-      medications: 'medication', clinicalNotes: 'clinical note', nursingNotes: 'nursing note',
-      pathology: 'pathology record', radiology: 'radiology record', cardiology: 'cardiology record',
-      equipment: 'equipment record', dressing: 'dressing record', traction: 'traction record',
+      medications: 'medication',
+      clinicalNotes: 'clinical note',
+      nursingNotes: 'nursing note',
+      pathology: 'pathology record',
+      radiology: 'radiology record',
+      cardiology: 'cardiology record',
+      equipment: 'equipment record',
+      dressing: 'dressing record',
+      traction: 'traction record',
       rounds: 'visit record',
     };
     if (!window.confirm(`Delete this ${labels[subKey] || 'record'}?`)) return;
@@ -738,12 +759,16 @@ export default function AdmissionDetail() {
     if (subKey === 'clinicalNotes') updatedAdm.clinical = updatedList.length;
     if (subKey === 'nursingNotes') updatedAdm.nursing = updatedList.length;
     if (['pathology', 'radiology', 'cardiology'].includes(subKey)) {
-      updatedAdm.investigations = ['pathology', 'radiology', 'cardiology']
-        .reduce((sum, k) => sum + (k === subKey ? updatedList : (cf[k] || [])).length, 0);
+      updatedAdm.investigations = ['pathology', 'radiology', 'cardiology'].reduce(
+        (sum, k) => sum + (k === subKey ? updatedList : cf[k] || []).length,
+        0,
+      );
     }
     if (['equipment', 'dressing', 'traction'].includes(subKey)) {
-      updatedAdm.procedures = ['equipment', 'dressing', 'traction']
-        .reduce((sum, k) => sum + (k === subKey ? updatedList : (cf[k] || [])).length, 0);
+      updatedAdm.procedures = ['equipment', 'dressing', 'traction'].reduce(
+        (sum, k) => sum + (k === subKey ? updatedList : cf[k] || []).length,
+        0,
+      );
     }
     if (subKey === 'rounds') updatedAdm.visits = updatedList.length;
     await updateAdmission(id, updatedAdm);
@@ -1681,7 +1706,7 @@ export default function AdmissionDetail() {
             <button
               onClick={() => navigate(`/patients/${adm.mrNo}`)}
               style={{
-                background: 'transparent',
+                background: '#f1f5f9',
                 border: `1px solid ${C.border}`,
                 padding: '8px 12px',
                 borderRadius: 8,
@@ -1701,7 +1726,7 @@ export default function AdmissionDetail() {
           <button
             onClick={printAdmission}
             style={{
-              background: 'transparent',
+              background: '#16a34a40',
               border: `1px solid ${C.border}`,
               padding: '8px 12px',
               borderRadius: 8,
@@ -1719,13 +1744,20 @@ export default function AdmissionDetail() {
           </button>
           {canToggleAdmissionStatus && (
             <button
-              onClick={() => {
+              onClick={async () => {
                 const now = new Date().toLocaleTimeString('en-IN', {
                   hour: '2-digit',
                   minute: '2-digit',
                   hour12: true,
                 });
                 if (isAdmitted) {
+                  if (adm.mrNo) {
+                    const unpaid = await getPatientPendingBills(adm.mrNo);
+                    if (unpaid.length > 0) {
+                      setPendingBills(unpaid);
+                      return;
+                    }
+                  }
                   if (!window.confirm('Are you sure you want to discharge this patient?')) return;
                   dischargeAdmission(id, TODAY, now).then(() =>
                     setAdm((prev) => ({
@@ -2738,7 +2770,10 @@ export default function AdmissionDetail() {
                     <div style={{ color: C.text }}>{m.frequency}</div>
                     <div style={{ color: C.muted }}>{m.qty}</div>
                     <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                      <button style={iconBtnSm} onClick={() => handleOpenEditEntry('medications', idx)}>
+                      <button
+                        style={iconBtnSm}
+                        onClick={() => handleOpenEditEntry('medications', idx)}
+                      >
                         <Pencil size={11} />
                       </button>
                       <button
@@ -2760,194 +2795,12 @@ export default function AdmissionDetail() {
 
           {/* ─── TREATMENT CHART ─── */}
           {currentTab === 'treatment' && (
-            <div
-              style={{
-                background: C.surface,
-                border: `1px solid ${C.border}`,
-                borderRadius: 12,
-                overflow: 'hidden',
-              }}
-            >
-              <div
-                style={{
-                  padding: '16px 20px',
-                  borderBottom: `1px solid ${C.border}`,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: C.text }}>
-                  Treatment Chart
-                </h2>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  {['list', 'grid'].map((v) => (
-                    <button
-                      key={v}
-                      onClick={() => setTreatView(v)}
-                      style={{
-                        padding: '5px 14px',
-                        borderRadius: 20,
-                        border: `1px solid ${treatView === v ? C.primary : C.border}`,
-                        background: treatView === v ? 'rgba(8,145,178,0.08)' : 'transparent',
-                        color: treatView === v ? C.primary : C.muted,
-                        fontSize: 12,
-                        fontWeight: treatView === v ? 600 : 400,
-                        cursor: 'pointer',
-                        fontFamily: 'inherit',
-                        textTransform: 'capitalize',
-                      }}
-                    >
-                      {v}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {treatView === 'list' ? (
-                <>
-                  <div style={{ ...tblHeader, gridTemplateColumns: '2.2fr 90px 90px 130px' }}>
-                    <div>Drug</div>
-                    <div>Dose</div>
-                    <div>Route</div>
-                    <div>Frequency</div>
-                  </div>
-                  {(cf.treatmentList || []).length === 0 ? (
-                    <div
-                      style={{
-                        padding: '40px 20px',
-                        textAlign: 'center',
-                        color: C.muted,
-                        fontSize: 13,
-                      }}
-                    >
-                      No treatment recorded.
-                    </div>
-                  ) : (
-                    (cf.treatmentList || []).map((t, i) => (
-                      <div
-                        key={i}
-                        style={{ ...tblRow, gridTemplateColumns: '2.2fr 90px 90px 130px' }}
-                      >
-                        <div style={{ fontWeight: 500, color: C.text }}>{t.drug}</div>
-                        <div>{t.dose}</div>
-                        <div>
-                          <span
-                            style={{
-                              fontSize: 11,
-                              padding: '2px 8px',
-                              borderRadius: 10,
-                              background: C.subtleBg,
-                              color: C.muted,
-                            }}
-                          >
-                            {t.route}
-                          </span>
-                        </div>
-                        <div>{t.freq}</div>
-                      </div>
-                    ))
-                  )}
-                </>
-              ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <div style={{ minWidth: 'max-content', padding: '0 0 8px' }}>
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: `220px 80px 80px ${(cf.treatmentDates || []).map(() => '86px').join(' ')}`,
-                        padding: '10px 18px',
-                        background: C.subtleBg,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.06em',
-                        color: C.muted,
-                        borderBottom: `1px solid ${C.border}`,
-                      }}
-                    >
-                      <div>Drug</div>
-                      <div>Route</div>
-                      <div>Freq</div>
-                      {(cf.treatmentDates || []).map((d) => {
-                        const [, m, day] = d.split('-');
-                        const mo = [
-                          'Jan',
-                          'Feb',
-                          'Mar',
-                          'Apr',
-                          'May',
-                          'Jun',
-                          'Jul',
-                          'Aug',
-                          'Sep',
-                          'Oct',
-                          'Nov',
-                          'Dec',
-                        ][+m - 1];
-                        return (
-                          <div key={d} style={{ textAlign: 'center' }}>
-                            {+day} {mo}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {(cf.treatmentList || []).map((t, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: `220px 80px 80px ${(cf.treatmentDates || []).map(() => '86px').join(' ')}`,
-                          padding: '10px 18px',
-                          borderBottom: `1px solid ${C.border}`,
-                          alignItems: 'center',
-                          fontSize: 13,
-                        }}
-                      >
-                        <div style={{ fontWeight: 500, color: C.text, fontSize: 12 }}>{t.drug}</div>
-                        <div style={{ fontSize: 11 }}>
-                          <span
-                            style={{
-                              padding: '2px 7px',
-                              background: C.subtleBg,
-                              borderRadius: 8,
-                              color: C.muted,
-                            }}
-                          >
-                            {t.route}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: 12, color: C.muted }}>{t.freq}</div>
-                        {(cf.treatmentDates || []).map((d) => {
-                          const st = t.cells?.[d];
-                          const isOn = st === 'ON';
-                          return (
-                            <div key={d} style={{ display: 'flex', justifyContent: 'center' }}>
-                              <span
-                                style={{
-                                  padding: '3px 10px',
-                                  borderRadius: 8,
-                                  fontSize: 11,
-                                  fontWeight: 600,
-                                  background: isOn
-                                    ? 'rgba(8,145,178,0.12)'
-                                    : st === 'OFF'
-                                      ? 'rgba(217,80,80,0.08)'
-                                      : 'transparent',
-                                  color: isOn ? C.primary : st === 'OFF' ? '#d95050' : C.muted,
-                                }}
-                              >
-                                {st || '—'}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            <TreatmentChart
+              adm={adm}
+              id={id}
+              setAdm={setAdm}
+              canEdit={canEditIpdTab('treatment')}
+            />
           )}
 
           {/* ─── CLINICAL NOTES ─── */}
@@ -3048,13 +2901,39 @@ export default function AdmissionDetail() {
                         {n.note}
                       </div>
                       <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                        <button style={iconBtnSm} title="Print" onClick={() => {
-                          const pri = (() => { let f = document.getElementById('print-iframe'); if (!f) { f = document.createElement('iframe'); f.id = 'print-iframe'; f.style.cssText = 'position:absolute;width:0;height:0;border:0;top:-1000px;left:-1000px;'; document.body.appendChild(f); } return f.contentWindow || f.contentDocument; })();
-                          pri.document.open(); pri.document.write(`<!DOCTYPE html><html><head><title>Clinical Note</title><style>body{font-family:sans-serif;padding:32px;color:#0f172a;}</style></head><body><h2>Clinical Note — ${adm.patientName}</h2><p><strong>Date:</strong> ${n.date} ${n.time}</p><p><strong>Doctor:</strong> ${n.doctor}</p><p style="margin-top:16px;border-left:3px solid #0891b2;padding-left:12px;">${n.note}</p></body></html>`); pri.document.close(); setTimeout(() => { pri.focus(); pri.print(); }, 100);
-                        }}>
+                        <button
+                          style={iconBtnSm}
+                          title="Print"
+                          onClick={() => {
+                            const pri = (() => {
+                              let f = document.getElementById('print-iframe');
+                              if (!f) {
+                                f = document.createElement('iframe');
+                                f.id = 'print-iframe';
+                                f.style.cssText =
+                                  'position:absolute;width:0;height:0;border:0;top:-1000px;left:-1000px;';
+                                document.body.appendChild(f);
+                              }
+                              return f.contentWindow || f.contentDocument;
+                            })();
+                            pri.document.open();
+                            pri.document.write(
+                              `<!DOCTYPE html><html><head><title>Clinical Note</title><style>body{font-family:sans-serif;padding:32px;color:#0f172a;}</style></head><body><h2>Clinical Note — ${adm.patientName}</h2><p><strong>Date:</strong> ${n.date} ${n.time}</p><p><strong>Doctor:</strong> ${n.doctor}</p><p style="margin-top:16px;border-left:3px solid #0891b2;padding-left:12px;">${n.note}</p></body></html>`,
+                            );
+                            pri.document.close();
+                            setTimeout(() => {
+                              pri.focus();
+                              pri.print();
+                            }, 100);
+                          }}
+                        >
                           <Printer size={11} />
                         </button>
-                        <button style={iconBtnSm} title="Edit" onClick={() => handleOpenEditEntry('clinical', idx)}>
+                        <button
+                          style={iconBtnSm}
+                          title="Edit"
+                          onClick={() => handleOpenEditEntry('clinical', idx)}
+                        >
                           <Pencil size={11} />
                         </button>
                         <button
@@ -3258,7 +3137,10 @@ export default function AdmissionDetail() {
                             {p.sign}
                           </div>
                           <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                            <button style={iconBtnSm} onClick={() => handleOpenEditEntry('pathology', i)}>
+                            <button
+                              style={iconBtnSm}
+                              onClick={() => handleOpenEditEntry('pathology', i)}
+                            >
                               <Pencil size={11} />
                             </button>
                             <button
@@ -3337,7 +3219,10 @@ export default function AdmissionDetail() {
                             {r.sign}
                           </div>
                           <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                            <button style={iconBtnSm} onClick={() => handleOpenEditEntry('radiology', i)}>
+                            <button
+                              style={iconBtnSm}
+                              onClick={() => handleOpenEditEntry('radiology', i)}
+                            >
                               <Pencil size={11} />
                             </button>
                             <button
@@ -3397,7 +3282,10 @@ export default function AdmissionDetail() {
                             {c.sign}
                           </div>
                           <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                            <button style={iconBtnSm} onClick={() => handleOpenEditEntry('cardiology', i)}>
+                            <button
+                              style={iconBtnSm}
+                              onClick={() => handleOpenEditEntry('cardiology', i)}
+                            >
                               <Pencil size={11} />
                             </button>
                             <button
@@ -3526,7 +3414,9 @@ export default function AdmissionDetail() {
                         </div>
                         <div style={{ fontSize: 12, color: C.muted }}>{eq.onTime}</div>
                         <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic' }}>
-                          {eq.sign}
+                          {eq.sign?.startsWith('data:image/') ? (
+                            <img src={eq.sign} alt="signature" style={{ height: 28, maxWidth: 90, objectFit: 'contain' }} />
+                          ) : (eq.sign || '—')}
                         </div>
                         <div style={{ fontSize: 12, color: eq.offDate ? C.muted : C.border }}>
                           {eq.offDate || '—'}
@@ -3541,10 +3431,15 @@ export default function AdmissionDetail() {
                             fontStyle: 'italic',
                           }}
                         >
-                          {eq.offSign || '—'}
+                          {eq.offSign?.startsWith('data:image/') ? (
+                            <img src={eq.offSign} alt="signature" style={{ height: 28, maxWidth: 90, objectFit: 'contain' }} />
+                          ) : (eq.offSign || '—')}
                         </div>
                         <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                          <button style={iconBtnSm} onClick={() => handleOpenEditEntry('equipment', i)}>
+                          <button
+                            style={iconBtnSm}
+                            onClick={() => handleOpenEditEntry('equipment', i)}
+                          >
                             <Pencil size={11} />
                           </button>
                           <button
@@ -3603,7 +3498,10 @@ export default function AdmissionDetail() {
                           {d.sign}
                         </div>
                         <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                          <button style={iconBtnSm} onClick={() => handleOpenEditEntry('dressing', i)}>
+                          <button
+                            style={iconBtnSm}
+                            onClick={() => handleOpenEditEntry('dressing', i)}
+                          >
                             <Pencil size={11} />
                           </button>
                           <button
@@ -3674,7 +3572,10 @@ export default function AdmissionDetail() {
                           {t.sign}
                         </div>
                         <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                          <button style={iconBtnSm} onClick={() => handleOpenEditEntry('traction', i)}>
+                          <button
+                            style={iconBtnSm}
+                            onClick={() => handleOpenEditEntry('traction', i)}
+                          >
                             <Pencil size={11} />
                           </button>
                           <button
@@ -3829,15 +3730,733 @@ export default function AdmissionDetail() {
         />
       )}
 
+      {/* Pending bills blocking modal — prevents discharge */}
+      {pendingBills &&
+        createPortal(
+          <div className="modal-backdrop" style={{ zIndex: 9999 }}>
+            <div
+              className="modal-panel"
+              style={{ maxWidth: 520, background: 'var(--surface)', padding: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '18px 24px',
+                  borderBottom: '1px solid var(--border-card)',
+                  background: '#fef2f2',
+                  borderRadius: '12px 12px 0 0',
+                }}
+              >
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 8,
+                    background: '#dc2626',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <AlertOctagon size={18} color="white" />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: '#991b1b' }}>
+                    Discharge Blocked — Pending Bills
+                  </div>
+                  <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 2 }}>
+                    Clear all outstanding bills before discharging this patient.
+                  </div>
+                </div>
+              </div>
+
+              {/* Bill list */}
+              <div
+                style={{
+                  padding: '16px 24px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                  maxHeight: 320,
+                  overflowY: 'auto',
+                }}
+              >
+                {pendingBills.map((b) => {
+                  const balance = (b.amount || 0) - (b.paid || 0);
+                  const isPartial = b.status === 'Partial';
+                  return (
+                    <div
+                      key={b.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '10px 14px',
+                        border: '1px solid var(--border-card)',
+                        borderRadius: 8,
+                        background: 'var(--bg-canvas)',
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--fg-on-light)' }}>
+                          {b.id}
+                        </div>
+                        <div
+                          style={{ fontSize: 11, color: 'var(--fg-on-light-muted)', marginTop: 2 }}
+                        >
+                          {b.type} · {b.date}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#991b1b' }}>
+                          ₹{balance.toLocaleString('en-IN')} due
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            marginTop: 2,
+                            padding: '1px 8px',
+                            borderRadius: 10,
+                            display: 'inline-block',
+                            background: isPartial ? 'rgba(234,179,8,0.12)' : 'rgba(220,38,38,0.10)',
+                            color: isPartial ? '#854d0e' : '#991b1b',
+                            fontWeight: 600,
+                          }}
+                        >
+                          {b.status}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Footer */}
+              <div
+                style={{
+                  padding: '14px 24px',
+                  borderTop: '1px solid var(--border-card)',
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: 10,
+                  background: 'var(--surface-subtle)',
+                  borderRadius: '0 0 12px 12px',
+                }}
+              >
+                <button onClick={() => setPendingBills(null)} className="btn-secondary">
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setPendingBills(null);
+                    navigate('/billing');
+                  }}
+                  style={{
+                    background: '#0891b2',
+                    color: 'white',
+                    border: 'none',
+                    padding: '8px 16px',
+                    borderRadius: 8,
+                    fontFamily: 'inherit',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Go to Billing
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+
       {entryModal && canEditIpdTab(entryTypeToTab[entryModal] || currentTab) && (
         <CaseFileEntryModal
-          key={editEntryInfo ? `edit-${editEntryInfo.type}-${editEntryInfo.index}` : `add-${entryModal}`}
+          key={
+            editEntryInfo
+              ? `edit-${editEntryInfo.type}-${editEntryInfo.index}`
+              : `add-${entryModal}`
+          }
           type={entryModal}
           adm={adm}
           editInfo={editEntryInfo}
-          onClose={() => { setEntryModal(null); setEditEntryInfo(null); }}
+          onClose={() => {
+            setEntryModal(null);
+            setEditEntryInfo(null);
+          }}
           onSave={handleSaveEntry}
         />
+      )}
+    </div>
+  );
+}
+
+// ── TREATMENT CHART ──────────────────────────────────────────────────────────
+
+function TreatmentChart({ adm, id, setAdm, canEdit }) {
+  const cf = adm.casefile || {};
+
+  const [view, setView] = useState('grid');
+  const [cellEdit, setCellEdit] = useState(null);
+  const [signInput, setSignInput] = useState('');
+  const [addOpen, setAddOpen] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const EMPTY_FORM = { drug: '', dose: '', route: '', freq: 'OD', doctor: '', date: TODAY };
+  const [form, setForm] = useState(EMPTY_FORM);
+
+  const txList = cf.treatmentList || [];
+  const txGrid = cf.treatmentGrid || {};
+
+  const admDates = (() => {
+    const start = new Date(adm.admittedOn);
+    const end = new Date(adm.dischargedOn || TODAY);
+    const dates = [];
+    const cur = new Date(start);
+    while (cur <= end) {
+      dates.push(cur.toISOString().slice(0, 10));
+      cur.setDate(cur.getDate() + 1);
+    }
+    return dates;
+  })();
+
+  const gridRows = [];
+  txList.forEach((drug) => {
+    const times = FREQ_TIMES[drug.freq] || [drug.freq || '—'];
+    times.forEach((time, tIdx) => {
+      gridRows.push({ drug, time, tIdx, isFirst: tIdx === 0 });
+    });
+  });
+
+  const persist = async (newList, newGrid) => {
+    const updatedAdm = {
+      ...adm,
+      casefile: { ...cf, treatmentList: newList, treatmentGrid: newGrid },
+      treatment: newList.length,
+    };
+    await updateAdmission(id, updatedAdm);
+    setAdm(updatedAdm);
+  };
+
+  const toggleCell = async (drugId, date, time) => {
+    const cell = txGrid[drugId]?.[date]?.[time];
+    if (cell?.given) {
+      const newGrid = {
+        ...txGrid,
+        [drugId]: {
+          ...(txGrid[drugId] || {}),
+          [date]: { ...(txGrid[drugId]?.[date] || {}), [time]: { given: false, sign: '' } },
+        },
+      };
+      await persist(txList, newGrid);
+    } else {
+      setCellEdit({ drugId, date, time });
+      setSignInput('');
+    }
+  };
+
+  const confirmCell = async () => {
+    if (!cellEdit) return;
+    const { drugId, date, time } = cellEdit;
+    const newGrid = {
+      ...txGrid,
+      [drugId]: {
+        ...(txGrid[drugId] || {}),
+        [date]: { ...(txGrid[drugId]?.[date] || {}), [time]: { given: true, sign: signInput } },
+      },
+    };
+    setSaving(true);
+    await persist(txList, newGrid);
+    setSaving(false);
+    setCellEdit(null);
+    setSignInput('');
+  };
+
+  const saveDrug = async () => {
+    if (!form.drug.trim()) return;
+    setSaving(true);
+    let newList;
+    if (editId) {
+      newList = txList.map((t) => (t.id === editId ? { ...t, ...form } : t));
+    } else {
+      newList = [...txList, { ...form, id: `tx-${Date.now()}` }];
+    }
+    await persist(newList, txGrid);
+    setSaving(false);
+    setAddOpen(false);
+    setEditId(null);
+    setForm(EMPTY_FORM);
+  };
+
+  const deleteDrug = async (drugId) => {
+    const newList = txList.filter((t) => t.id !== drugId);
+    const newGrid = { ...txGrid };
+    delete newGrid[drugId];
+    await persist(newList, newGrid);
+  };
+
+  const fmtCol = (iso) => {
+    const [, m, d] = iso.split('-');
+    return `${+d} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m - 1]}`;
+  };
+
+  const inputStyle = {
+    width: '100%',
+    padding: '9px 12px',
+    border: '1px solid rgba(15,23,42,0.15)',
+    borderRadius: 8,
+    fontFamily: 'inherit',
+    fontSize: 13,
+    outline: 'none',
+    boxSizing: 'border-box',
+  };
+  const labelStyle = {
+    fontSize: 12,
+    fontWeight: 600,
+    color: C.muted,
+    display: 'block',
+    marginBottom: 5,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  };
+
+  return (
+    <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+      {/* Header */}
+      <div style={{ padding: '14px 20px', borderBottom: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: C.text }}>Treatment Chart</h2>
+          <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Click a cell to mark administered + sign</div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {[{ v: 'grid', label: 'Grid' }, { v: 'list', label: 'List' }].map(({ v, label }) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              style={{
+                padding: '6px 14px',
+                borderRadius: 6,
+                border: `1px solid ${view === v ? C.primary : C.border}`,
+                background: view === v ? 'rgba(8,145,178,0.1)' : 'transparent',
+                color: view === v ? C.primary : C.muted,
+                fontSize: 12,
+                fontWeight: view === v ? 600 : 400,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+          {canEdit && (
+            <button
+              onClick={() => { setForm(EMPTY_FORM); setEditId(null); setAddOpen(true); }}
+              className="btn-primary"
+              style={{ fontSize: 12 }}
+            >
+              <Plus size={13} /> Add drug
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── GRID VIEW ── */}
+      {view === 'grid' && (
+        <>
+          {txList.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', background: 'rgba(8,145,178,0.06)', borderBottom: '1px solid rgba(8,145,178,0.15)', fontSize: 12.5, color: C.text }}>
+              <Info size={14} color="#0891b2" style={{ flexShrink: 0 }} />
+              <span><strong>How to use:</strong> Click any ○ pending cell to mark administered &amp; add nurse initials. Click a ✓ green cell to unmark it.</span>
+            </div>
+          )}
+          {txList.length === 0 ? (
+            <div style={{ padding: '40px 20px', textAlign: 'center', color: C.muted }}>
+              <Syringe size={28} style={{ opacity: 0.4, display: 'block', margin: '0 auto 8px' }} />
+              <div style={{ fontSize: 13 }}>No drugs added. Click &ldquo;Add drug&rdquo; to start the administration grid.</div>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              {/* Grid header */}
+              <div style={{ display: 'flex', minWidth: 'max-content', background: C.subtleBg, borderBottom: '2px solid rgba(15,23,42,0.10)' }}>
+                <div style={{ width: 220, flexShrink: 0, padding: '10px 14px', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, fontWeight: 600, borderRight: '1px solid rgba(15,23,42,0.08)' }}>Drug · Dose · Route</div>
+                <div style={{ width: 60, flexShrink: 0, padding: '10px 8px', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, fontWeight: 600, borderRight: '1px solid rgba(15,23,42,0.08)' }}>Freq</div>
+                <div style={{ width: 72, flexShrink: 0, padding: '10px 8px', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, fontWeight: 600, borderRight: '2px solid rgba(15,23,42,0.12)', fontFamily: 'monospace' }}>Time</div>
+                {admDates.map((date, di) => (
+                  <div key={date} style={{ width: 86, flexShrink: 0, padding: '8px 4px', fontSize: 11, textAlign: 'center', color: C.muted, fontWeight: 600, borderRight: '1px solid rgba(15,23,42,0.06)' }}>
+                    <div>{fmtCol(date)}</div>
+                    <div style={{ fontSize: 10, fontWeight: 400, opacity: 0.65 }}>Day {di + 1}</div>
+                  </div>
+                ))}
+              </div>
+              {/* Grid rows */}
+              {gridRows.map(({ drug, time, tIdx, isFirst }) => (
+                <div key={`${drug.id}-${time}`} style={{ display: 'flex', minWidth: 'max-content', borderTop: tIdx === 0 ? '2px solid rgba(15,23,42,0.07)' : '1px solid rgba(15,23,42,0.04)' }}>
+                  <div style={{ width: 220, flexShrink: 0, padding: '8px 14px', borderRight: '1px solid rgba(15,23,42,0.06)', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 40 }}>
+                    {isFirst && (
+                      <>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{drug.drug}</div>
+                        <div style={{ fontSize: 10, color: C.muted, marginTop: 1 }}>{drug.dose} · {drug.route}</div>
+                      </>
+                    )}
+                  </div>
+                  <div style={{ width: 60, flexShrink: 0, padding: '8px 6px', fontSize: 11, color: C.muted, borderRight: '1px solid rgba(15,23,42,0.06)', display: 'flex', alignItems: 'center' }}>
+                    {isFirst ? drug.freq : ''}
+                  </div>
+                  <div style={{ width: 72, flexShrink: 0, padding: '8px 6px', fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: C.text, borderRight: '2px solid rgba(15,23,42,0.12)', display: 'flex', alignItems: 'center' }}>
+                    {time}
+                  </div>
+                  {admDates.map((date) => {
+                    const cell = txGrid[drug.id]?.[date]?.[time];
+                    const beforeRx = drug.date && date < drug.date;
+                    const isEditing = cellEdit?.drugId === drug.id && cellEdit?.date === date && cellEdit?.time === time;
+                    if (beforeRx) {
+                      return (
+                        <div key={date} style={{ width: 86, flexShrink: 0, borderRight: '1px solid rgba(15,23,42,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <span style={{ fontSize: 14, color: '#e2e8f0' }}>—</span>
+                        </div>
+                      );
+                    }
+                    if (cell?.given) {
+                      return (
+                        <div key={date} onClick={() => toggleCell(drug.id, date, time)}
+                          style={{ width: 86, flexShrink: 0, padding: '6px 4px', background: 'rgba(22,163,74,0.08)', borderRight: '1px solid rgba(15,23,42,0.04)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                          <span style={{ fontSize: 16, color: '#16a34a', fontWeight: 500 }}>✓</span>
+                          {cell.sign && <div style={{ fontSize: 9, color: C.muted, maxWidth: 78, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cell.sign}</div>}
+                        </div>
+                      );
+                    }
+                    return (
+                      <div key={date} onClick={() => toggleCell(drug.id, date, time)}
+                        style={{ width: 86, flexShrink: 0, padding: '6px 4px', background: isEditing ? 'rgba(8,145,178,0.06)' : 'transparent', borderRight: '1px solid rgba(15,23,42,0.04)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 120ms' }}>
+                        <span style={{ fontSize: 16, color: '#cbd5e1' }}>○</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+              {/* Sign bar */}
+              {cellEdit && (
+                <div style={{ padding: '12px 16px', borderTop: '2px solid #0891b2', background: 'rgba(8,145,178,0.05)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: C.text, whiteSpace: 'nowrap' }}>Mark administered</span>
+                  <input
+                    type="text"
+                    value={signInput}
+                    onChange={(e) => setSignInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && confirmCell()}
+                    placeholder="Nurse / staff initials (e.g. RN Hema)"
+                    autoFocus
+                    style={{ flex: 1, minWidth: 180, padding: '8px 11px', border: '1px solid rgba(15,23,42,0.15)', borderRadius: 6, fontFamily: 'inherit', fontSize: 13, outline: 'none' }}
+                  />
+                  <button onClick={confirmCell} disabled={saving}
+                    style={{ background: '#0891b2', color: 'white', border: 'none', padding: '8px 18px', borderRadius: 6, fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    {saving ? 'Saving…' : 'Confirm'}
+                  </button>
+                  <button onClick={() => { setCellEdit(null); setSignInput(''); }}
+                    style={{ background: 'transparent', border: '1px solid rgba(15,23,42,0.12)', color: C.text, padding: '8px 14px', borderRadius: 6, fontFamily: 'inherit', fontSize: 13, cursor: 'pointer' }}>
+                    Cancel
+                  </button>
+                </div>
+              )}
+              {/* Legend */}
+              <div style={{ padding: '10px 14px', borderTop: '1px solid rgba(15,23,42,0.06)', background: C.subtleBg, display: 'flex', gap: 18, fontSize: 11, color: C.muted, flexWrap: 'wrap' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ color: '#16a34a', fontSize: 14, fontWeight: 500 }}>✓</span> Administered · click to unmark</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ color: '#cbd5e1', fontSize: 14 }}>○</span> Pending · click to mark + sign</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ color: '#e2e8f0', fontSize: 14 }}>—</span> Before prescription date</span>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── LIST VIEW ── */}
+      {view === 'list' && (
+        txList.length === 0 ? (
+          <div style={{ padding: '40px 20px', textAlign: 'center', color: C.muted }}>
+            <Syringe size={28} style={{ opacity: 0.4, display: 'block', margin: '0 auto 8px' }} />
+            <div style={{ fontSize: 13 }}>No treatment chart entries yet.</div>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <div style={{ minWidth: 700, background: 'white' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '50px 1.6fr 1fr 0.8fr 1fr 1.4fr 110px 80px', padding: '11px 16px', background: C.subtleBg, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, fontWeight: 600 }}>
+                <div>Sr.</div><div>Drug</div><div>Dose</div><div>Route</div><div>Freq.</div><div>Times</div><div>Doctor</div><div />
+              </div>
+              {txList.map((tx, i) => {
+                const times = FREQ_TIMES[tx.freq] || [tx.freq || '—'];
+                return (
+                  <div key={tx.id || i} style={{ display: 'grid', gridTemplateColumns: '50px 1.6fr 1fr 0.8fr 1fr 1.4fr 110px 80px', padding: '11px 16px', borderTop: `1px solid ${C.border}`, alignItems: 'center', fontSize: 13 }}>
+                    <div style={{ color: C.muted, fontWeight: 600 }}>{i + 1}</div>
+                    <div>
+                      <div style={{ fontWeight: 500, color: C.text }}>{tx.drug}</div>
+                      <div style={{ fontSize: 11, color: C.muted }}>{fmtDate(tx.date)}</div>
+                    </div>
+                    <div>{tx.dose}</div>
+                    <div>{tx.route}</div>
+                    <div>{tx.freq}</div>
+                    <div style={{ fontFamily: 'monospace', fontSize: 11, color: C.muted }}>{times.join(', ')}</div>
+                    <div style={{ fontSize: 12 }}>{tx.doctor}</div>
+                    {canEdit ? (
+                      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                        <button
+                          onClick={() => { setForm({ drug: tx.drug, dose: tx.dose, route: tx.route, freq: tx.freq, doctor: tx.doctor, date: tx.date || TODAY }); setEditId(tx.id); setAddOpen(true); }}
+                          style={{ background: 'transparent', border: '1px solid rgba(15,23,42,0.10)', width: 28, height: 28, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: C.text }}
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <button
+                          onClick={() => deleteDrug(tx.id)}
+                          style={{ background: 'transparent', border: '1px solid rgba(217,80,80,0.30)', color: '#d95050', width: 28, height: 28, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    ) : <div />}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )
+      )}
+
+      {/* ── ADD / EDIT DRUG MODAL ── */}
+      {addOpen && canEdit && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(3px)' }} onClick={() => setAddOpen(false)} />
+          <div style={{ position: 'relative', background: 'white', borderRadius: 14, padding: '28px 32px', width: '100%', maxWidth: 460, boxShadow: '0 20px 60px rgba(0,0,0,0.22)' }}>
+            <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 600, color: C.text }}>{editId ? 'Edit Drug' : 'Add Drug'}</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {[
+                { label: 'Drug name *', key: 'drug', placeholder: 'e.g. Metformin' },
+                { label: 'Dose', key: 'dose', placeholder: 'e.g. 500 mg' },
+                { label: 'Route', key: 'route', placeholder: 'e.g. Oral, IV, IM' },
+                { label: 'Doctor', key: 'doctor', placeholder: 'Prescribing doctor' },
+              ].map(({ label, key, placeholder }) => (
+                <div key={key}>
+                  <label style={labelStyle}>{label}</label>
+                  <input
+                    type="text"
+                    value={form[key]}
+                    onChange={(e) => setForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                    placeholder={placeholder}
+                    style={inputStyle}
+                  />
+                </div>
+              ))}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={labelStyle}>Frequency</label>
+                  <select
+                    value={form.freq}
+                    onChange={(e) => setForm((prev) => ({ ...prev, freq: e.target.value }))}
+                    style={{ ...inputStyle, background: 'white' }}
+                  >
+                    {Object.keys(FREQ_TIMES).map((f) => (
+                      <option key={f} value={f}>{f} — {FREQ_TIMES[f].join(', ')}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>Start Date</label>
+                  <input
+                    type="date"
+                    value={form.date}
+                    onChange={(e) => setForm((prev) => ({ ...prev, date: e.target.value }))}
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
+              <button
+                onClick={() => { setAddOpen(false); setEditId(null); setForm(EMPTY_FORM); }}
+                style={{ padding: '9px 20px', border: '1px solid rgba(15,23,42,0.12)', borderRadius: 8, background: 'transparent', color: C.text, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveDrug}
+                disabled={saving || !form.drug.trim()}
+                className="btn-primary"
+                style={{ fontSize: 13, opacity: saving || !form.drug.trim() ? 0.6 : 1 }}
+              >
+                {saving ? 'Saving…' : editId ? 'Save Changes' : 'Add Drug'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+    </div>
+  );
+}
+
+// ── SIGNATURE FIELD (type or draw) ────────────────────────────────────────────
+
+function SignatureField({ value, onChange, label = 'Sign', required = false }) {
+  const isDataUrl = (v) => typeof v === 'string' && v.startsWith('data:image/');
+  const [mode, setMode] = useState(() => (isDataUrl(value) ? 'draw' : 'type'));
+  const canvasRef = useRef(null);
+  const drawing = useRef(false);
+  const lastPos = useRef(null);
+
+  // Initialise canvas background + replay saved drawing on mount / mode switch
+  const initCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (isDataUrl(value)) {
+      const img = new Image();
+      img.onload = () => ctx.drawImage(img, 0, 0);
+      img.src = value;
+    }
+  }, [value]);
+
+  useEffect(() => {
+    if (mode === 'draw') initCanvas();
+  }, [mode, initCanvas]);
+
+  const getPos = (e, canvas) => {
+    const rect = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - rect.left, y: src.clientY - rect.top };
+  };
+
+  const startDraw = (e) => {
+    e.preventDefault();
+    drawing.current = true;
+    lastPos.current = getPos(e, canvasRef.current);
+  };
+
+  const draw = (e) => {
+    e.preventDefault();
+    if (!drawing.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const pos = getPos(e, canvas);
+    ctx.beginPath();
+    ctx.moveTo(lastPos.current.x, lastPos.current.y);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    lastPos.current = pos;
+  };
+
+  const endDraw = (e) => {
+    if (!drawing.current) return;
+    drawing.current = false;
+    lastPos.current = null;
+    onChange(canvasRef.current.toDataURL('image/png'));
+  };
+
+  const clearCanvas = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    onChange('');
+  };
+
+  const switchMode = (m) => {
+    setMode(m);
+    if (m === 'type' && isDataUrl(value)) onChange('');
+    if (m === 'draw' && !isDataUrl(value)) onChange('');
+  };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--fg-on-light-muted)' }}>
+          {label}{required && ' *'}
+        </span>
+        <div style={{ display: 'flex', background: 'var(--surface-subtle)', borderRadius: 6, padding: 2, gap: 2, border: '1px solid var(--border-card)' }}>
+          {['type', 'draw'].map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => switchMode(m)}
+              style={{
+                padding: '3px 10px',
+                borderRadius: 4,
+                border: 'none',
+                fontFamily: 'inherit',
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: 'pointer',
+                background: mode === m ? 'var(--surface)' : 'transparent',
+                color: mode === m ? 'var(--fg-on-light)' : 'var(--fg-on-light-muted)',
+                boxShadow: mode === m ? '0 1px 3px rgba(0,0,0,0.10)' : 'none',
+              }}
+            >
+              {m === 'type' ? 'Type' : 'Draw'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {mode === 'type' ? (
+        <input
+          style={{
+            width: '100%', padding: '10px 12px',
+            border: '1px solid var(--border-strong)', borderRadius: 6,
+            fontFamily: 'inherit', fontSize: 14, outline: 'none',
+            background: 'var(--bg-canvas)', color: 'var(--fg-on-light)', boxSizing: 'border-box',
+          }}
+          required={required}
+          value={isDataUrl(value) ? '' : value}
+          placeholder="e.g. Dr. Priya Mehta"
+          onChange={(e) => onChange(e.target.value)}
+        />
+      ) : (
+        <div style={{ position: 'relative' }}>
+          <canvas
+            ref={canvasRef}
+            width={440}
+            height={90}
+            onMouseDown={startDraw}
+            onMouseMove={draw}
+            onMouseUp={endDraw}
+            onMouseLeave={endDraw}
+            onTouchStart={startDraw}
+            onTouchMove={draw}
+            onTouchEnd={endDraw}
+            style={{
+              width: '100%', height: 90,
+              border: '1px solid var(--border-strong)', borderRadius: 6,
+              cursor: 'crosshair', display: 'block', touchAction: 'none',
+              background: '#fff',
+            }}
+          />
+          <button
+            type="button"
+            onClick={clearCanvas}
+            style={{
+              position: 'absolute', top: 6, right: 8,
+              background: 'rgba(255,255,255,0.85)', border: '1px solid var(--border-ui)',
+              borderRadius: 4, padding: '2px 8px', fontSize: 11, fontWeight: 600,
+              cursor: 'pointer', color: 'var(--fg-on-light-muted)', fontFamily: 'inherit',
+            }}
+          >
+            Clear
+          </button>
+          {(!value || !isDataUrl(value)) && (
+            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none', color: '#cbd5e1', fontSize: 13 }}>
+              Sign here
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -3852,16 +4471,67 @@ function CaseFileEntryModal({ type, adm, onClose, onSave, editInfo }) {
     // In edit mode, pre-populate from existing item for list types
     if (isEdit && editInfo.item) {
       const item = editInfo.item;
-      if (type === 'medications') return { drug: item.drug || '', dose: item.dose || '', route: item.route || 'Oral', frequency: item.frequency || 'BD', qty: String(item.qty ?? 10) };
+      if (type === 'medications')
+        return {
+          drug: item.drug || '',
+          dose: item.dose || '',
+          route: item.route || 'Oral',
+          frequency: item.frequency || 'BD',
+          qty: String(item.qty ?? 10),
+        };
       if (type === 'clinical') return { note: item.note || '', doctor: item.doctor || '' };
       if (type === 'nursing') return { note: item.note || '', sign: item.sign || 'Nurse on duty' };
-      if (type === 'pathology') return { investigation: item.investigation || '', sign: item.sign || '' };
-      if (type === 'radiology') return { investigation: item.investigation || '', portable: item.portable ?? false, rtEr: item.rtEr ?? false, plateNo: item.plateNo || '', sign: item.sign || '' };
-      if (type === 'cardiology') return { investigation: item.investigation || '', doctor: item.doctor || '', sign: item.sign || '' };
-      if (type === 'equipment') return { type: item.type || '', onDate: TODAY, onTime: item.onTime || '', sign: item.sign || '', offDate: '', offTime: item.offTime || '', offSign: item.offSign || '' };
-      if (type === 'dressing') return { procedure: item.procedure || '', doctor: item.doctor || '', sign: item.sign || '' };
-      if (type === 'traction') return { procedure: item.procedure || '', startDate: TODAY, startTime: item.startTime || '', endDate: '', endTime: item.endTime || '', sign: item.sign || '' };
-      if (type === 'rounds') return { date: TODAY, first: item.first ?? false, routine: item.routine ?? true, daySpcl: item.daySpcl ?? false, nightSpcl: item.nightSpcl ?? false, consultant: item.consultant || '', signature: item.signature || '' };
+      if (type === 'pathology')
+        return { investigation: item.investigation || '', sign: item.sign || '' };
+      if (type === 'radiology')
+        return {
+          investigation: item.investigation || '',
+          portable: item.portable ?? false,
+          rtEr: item.rtEr ?? false,
+          plateNo: item.plateNo || '',
+          sign: item.sign || '',
+        };
+      if (type === 'cardiology')
+        return {
+          investigation: item.investigation || '',
+          doctor: item.doctor || '',
+          sign: item.sign || '',
+        };
+      if (type === 'equipment')
+        return {
+          type: item.type || '',
+          onDate: TODAY,
+          onTime: item.onTime || '',
+          sign: item.sign || '',
+          offDate: '',
+          offTime: item.offTime || '',
+          offSign: item.offSign || '',
+        };
+      if (type === 'dressing')
+        return {
+          procedure: item.procedure || '',
+          doctor: item.doctor || '',
+          sign: item.sign || '',
+        };
+      if (type === 'traction')
+        return {
+          procedure: item.procedure || '',
+          startDate: TODAY,
+          startTime: item.startTime || '',
+          endDate: '',
+          endTime: item.endTime || '',
+          sign: item.sign || '',
+        };
+      if (type === 'rounds')
+        return {
+          date: TODAY,
+          first: item.first ?? false,
+          routine: item.routine ?? true,
+          daySpcl: item.daySpcl ?? false,
+          nightSpcl: item.nightSpcl ?? false,
+          consultant: item.consultant || '',
+          signature: item.signature || '',
+        };
     }
     if (type === 'consent') {
       return { consent: !!adm.consent };
@@ -4085,62 +4755,106 @@ function CaseFileEntryModal({ type, adm, onClose, onSave, editInfo }) {
           frequency: fields.frequency,
           qty: parseInt(fields.qty) || 0,
         };
-        const updated = isEdit ? list.map((x, i) => i === editInfo.index ? newItem : x) : [...list, newItem];
+        const updated = isEdit
+          ? list.map((x, i) => (i === editInfo.index ? newItem : x))
+          : [...list, newItem];
         updates.casefile = { medications: updated };
       } else if (type === 'clinical') {
         const list = cf.clinicalNotes || [];
         const newItem = {
-          id: isEdit ? (editInfo.item.id || 'CN-' + Date.now()) : 'CN-' + Date.now(),
-          date: isEdit ? (editInfo.item.date || TODAY) : TODAY,
-          time: isEdit ? (editInfo.item.time || '') : new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+          id: isEdit ? editInfo.item.id || 'CN-' + Date.now() : 'CN-' + Date.now(),
+          date: isEdit ? editInfo.item.date || TODAY : TODAY,
+          time: isEdit
+            ? editInfo.item.time || ''
+            : new Date().toLocaleTimeString('en-IN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+              }),
           note: fields.note,
           doctor: fields.doctor,
         };
-        const updated = isEdit ? list.map((x, i) => i === editInfo.index ? newItem : x) : [...list, newItem];
+        const updated = isEdit
+          ? list.map((x, i) => (i === editInfo.index ? newItem : x))
+          : [...list, newItem];
         updates.casefile = { clinicalNotes: updated };
       } else if (type === 'nursing') {
         const list = cf.nursingNotes || [];
         const newItem = {
-          id: isEdit ? (editInfo.item.id || 'NN-' + Date.now()) : 'NN-' + Date.now(),
-          dateTime: isEdit ? editInfo.item.dateTime : (fmtDate(TODAY) + ' ' + new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })),
+          id: isEdit ? editInfo.item.id || 'NN-' + Date.now() : 'NN-' + Date.now(),
+          dateTime: isEdit
+            ? editInfo.item.dateTime
+            : fmtDate(TODAY) +
+              ' ' +
+              new Date().toLocaleTimeString('en-IN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+              }),
           note: fields.note,
           sign: fields.sign,
         };
-        const updated = isEdit ? list.map((x, i) => i === editInfo.index ? newItem : x) : [...list, newItem];
+        const updated = isEdit
+          ? list.map((x, i) => (i === editInfo.index ? newItem : x))
+          : [...list, newItem];
         updates.casefile = { nursingNotes: updated };
       } else if (type === 'pathology') {
         const list = cf.pathology || [];
         const newItem = {
           date: isEdit ? editInfo.item.date : fmtDate(TODAY),
-          time: isEdit ? editInfo.item.time : new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+          time: isEdit
+            ? editInfo.item.time
+            : new Date().toLocaleTimeString('en-IN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+              }),
           investigation: fields.investigation,
           sign: fields.sign,
         };
-        const updated = isEdit ? list.map((x, i) => i === editInfo.index ? newItem : x) : [...list, newItem];
+        const updated = isEdit
+          ? list.map((x, i) => (i === editInfo.index ? newItem : x))
+          : [...list, newItem];
         updates.casefile = { pathology: updated };
       } else if (type === 'radiology') {
         const list = cf.radiology || [];
         const newItem = {
           date: isEdit ? editInfo.item.date : fmtDate(TODAY),
-          time: isEdit ? editInfo.item.time : new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+          time: isEdit
+            ? editInfo.item.time
+            : new Date().toLocaleTimeString('en-IN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+              }),
           investigation: fields.investigation,
           portable: fields.portable,
           rtEr: fields.rtEr,
           plateNo: fields.plateNo,
           sign: fields.sign,
         };
-        const updated = isEdit ? list.map((x, i) => i === editInfo.index ? newItem : x) : [...list, newItem];
+        const updated = isEdit
+          ? list.map((x, i) => (i === editInfo.index ? newItem : x))
+          : [...list, newItem];
         updates.casefile = { radiology: updated };
       } else if (type === 'cardiology') {
         const list = cf.cardiology || [];
         const newItem = {
           date: isEdit ? editInfo.item.date : fmtDate(TODAY),
-          time: isEdit ? editInfo.item.time : new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+          time: isEdit
+            ? editInfo.item.time
+            : new Date().toLocaleTimeString('en-IN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+              }),
           investigation: fields.investigation,
           doctor: fields.doctor,
           sign: fields.sign,
         };
-        const updated = isEdit ? list.map((x, i) => i === editInfo.index ? newItem : x) : [...list, newItem];
+        const updated = isEdit
+          ? list.map((x, i) => (i === editInfo.index ? newItem : x))
+          : [...list, newItem];
         updates.casefile = { cardiology: updated };
       } else if (type === 'equipment') {
         const list = cf.equipment || [];
@@ -4153,18 +4867,28 @@ function CaseFileEntryModal({ type, adm, onClose, onSave, editInfo }) {
           offTime: fields.offTime,
           offSign: fields.offSign,
         };
-        const updated = isEdit ? list.map((x, i) => i === editInfo.index ? newItem : x) : [...list, newItem];
+        const updated = isEdit
+          ? list.map((x, i) => (i === editInfo.index ? newItem : x))
+          : [...list, newItem];
         updates.casefile = { equipment: updated };
       } else if (type === 'dressing') {
         const list = cf.dressing || [];
         const newItem = {
           date: isEdit ? editInfo.item.date : fmtDate(TODAY),
-          time: isEdit ? editInfo.item.time : new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+          time: isEdit
+            ? editInfo.item.time
+            : new Date().toLocaleTimeString('en-IN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+              }),
           procedure: fields.procedure,
           doctor: fields.doctor,
           sign: fields.sign,
         };
-        const updated = isEdit ? list.map((x, i) => i === editInfo.index ? newItem : x) : [...list, newItem];
+        const updated = isEdit
+          ? list.map((x, i) => (i === editInfo.index ? newItem : x))
+          : [...list, newItem];
         updates.casefile = { dressing: updated };
       } else if (type === 'traction') {
         const list = cf.traction || [];
@@ -4176,7 +4900,9 @@ function CaseFileEntryModal({ type, adm, onClose, onSave, editInfo }) {
           endTime: fields.endTime,
           sign: fields.sign,
         };
-        const updated = isEdit ? list.map((x, i) => i === editInfo.index ? newItem : x) : [...list, newItem];
+        const updated = isEdit
+          ? list.map((x, i) => (i === editInfo.index ? newItem : x))
+          : [...list, newItem];
         updates.casefile = { traction: updated };
       } else if (type === 'rounds') {
         const list = cf.rounds || [];
@@ -4189,7 +4915,9 @@ function CaseFileEntryModal({ type, adm, onClose, onSave, editInfo }) {
           consultant: fields.consultant,
           signature: fields.signature,
         };
-        const updated = isEdit ? list.map((x, i) => i === editInfo.index ? newItem : x) : [...list, newItem];
+        const updated = isEdit
+          ? list.map((x, i) => (i === editInfo.index ? newItem : x))
+          : [...list, newItem];
         updates.casefile = { rounds: updated };
       }
       await onSave(updates);
@@ -4948,7 +5676,7 @@ function CaseFileEntryModal({ type, adm, onClose, onSave, editInfo }) {
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 12 }}>
                 <label>
-                  <span style={lbl}>ON Date</span>
+                  <span style={lbl}>Date</span>
                   <input
                     style={inp}
                     type="date"
@@ -4958,7 +5686,7 @@ function CaseFileEntryModal({ type, adm, onClose, onSave, editInfo }) {
                   />
                 </label>
                 <label>
-                  <span style={lbl}>ON Time</span>
+                  <span style={lbl}>Time</span>
                   <input
                     style={inp}
                     required
@@ -4967,15 +5695,12 @@ function CaseFileEntryModal({ type, adm, onClose, onSave, editInfo }) {
                   />
                 </label>
               </div>
-              <label>
-                <span style={lbl}>Sign (ON)</span>
-                <input
-                  style={inp}
-                  required
-                  value={fields.sign}
-                  onChange={(e) => setVal('sign', e.target.value)}
-                />
-              </label>
+              <SignatureField
+                label="Sign"
+                required
+                value={fields.sign}
+                onChange={(v) => setVal('sign', v)}
+              />
               <div
                 style={{ borderTop: '1px solid var(--border-card)', paddingTop: 10, marginTop: 4 }}
               >
@@ -4987,11 +5712,11 @@ function CaseFileEntryModal({ type, adm, onClose, onSave, editInfo }) {
                     marginBottom: 8,
                   }}
                 >
-                  DISCHARGE / OFF DETAILS (OPTIONAL)
+                  DISCHARGE / DETAILS (OPTIONAL)
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 12 }}>
                   <label>
-                    <span style={lbl}>OFF Date</span>
+                    <span style={lbl}>Date</span>
                     <input
                       style={inp}
                       type="date"
@@ -5000,7 +5725,7 @@ function CaseFileEntryModal({ type, adm, onClose, onSave, editInfo }) {
                     />
                   </label>
                   <label>
-                    <span style={lbl}>OFF Time</span>
+                    <span style={lbl}>Time</span>
                     <input
                       style={inp}
                       value={fields.offTime}
@@ -5008,14 +5733,13 @@ function CaseFileEntryModal({ type, adm, onClose, onSave, editInfo }) {
                     />
                   </label>
                 </div>
-                <label style={{ marginTop: 8, display: 'block' }}>
-                  <span style={lbl}>Sign (OFF)</span>
-                  <input
-                    style={inp}
+                <div style={{ marginTop: 8 }}>
+                  <SignatureField
+                    label="Sign"
                     value={fields.offSign}
-                    onChange={(e) => setVal('offSign', e.target.value)}
+                    onChange={(v) => setVal('offSign', v)}
                   />
-                </label>
+                </div>
               </div>
             </>
           )}

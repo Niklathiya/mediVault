@@ -1,6 +1,6 @@
 import { UserPlus } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
-import { useRBAC } from '../../../context/RBACContext';
+import { useRBAC } from '../../../context/useRBAC';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTHS = [

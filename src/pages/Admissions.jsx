@@ -5,7 +5,7 @@ import CustomSelect from '../components/ui/CustomSelect';
 import { subscribeAdmissions, dischargeAdmission, updateAdmission } from '../firebase/services/admissionService.js';
 import { doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebase.js';
-import { useRBAC } from '../context/RBACContext';
+import { useRBAC } from '../context/useRBAC';
 
 const TODAY = new Date().toISOString().slice(0, 10);
 

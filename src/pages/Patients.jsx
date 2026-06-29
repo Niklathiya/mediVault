@@ -5,7 +5,7 @@ import { Plus, AlertTriangle, X, Pencil, Archive, Check } from 'lucide-react';
 import CustomSelect from '../components/ui/CustomSelect';
 import MultiSelect from '../components/ui/MultiSelect';
 import { subscribePatients, updatePatient, toggleArchivePatient } from '../firebase/services/patientService.js';
-import { useRBAC } from '../context/RBACContext';
+import { useRBAC } from '../context/useRBAC';
 
 const STATUS_BADGE = {
   active:     { label: 'Active',     color: '#15803d', bg: 'rgba(78,179,116,0.12)' },

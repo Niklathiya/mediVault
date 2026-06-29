@@ -3,7 +3,8 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { Search, X, Settings, Moon, Sun, ShieldCheck } from 'lucide-react';
 import Sidebar from '../components/sidebar/Sidebar';
 import { useDark } from '../context/DarkModeContext';
-import { ROLE_OPTIONS, useRBAC } from '../context/RBACContext';
+import { ROLE_OPTIONS } from '../context/rbacConstants';
+import { useRBAC } from '../context/useRBAC';
 import RegisterPatientModal from '../components/modals/RegisterPatientModal';
 import NewAdmissionModal from '../components/modals/NewAdmissionModal';
 

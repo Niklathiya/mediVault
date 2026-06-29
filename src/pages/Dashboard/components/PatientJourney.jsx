@@ -1,6 +1,6 @@
 import { UserPlus, BedDouble, Stethoscope, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useRBAC } from '../../../context/RBACContext';
+import { useRBAC } from '../../../context/useRBAC';
 
 const STEPS = [
   {
