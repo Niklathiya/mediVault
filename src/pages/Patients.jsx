@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { Plus, AlertTriangle, X, Pencil, Archive, Check } from 'lucide-react';
 import CustomSelect from '../components/ui/CustomSelect';
+import MultiSelect from '../components/ui/MultiSelect';
 import { subscribePatients, updatePatient, toggleArchivePatient } from '../firebase/services/patientService.js';
 
 const STATUS_BADGE = {
@@ -66,9 +67,9 @@ export default function Patients() {
     );
     return unsub;
   }, []);
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [bloodFilter, setBloodFilter]   = useState('all');
-  const [tagFilter, setTagFilter]       = useState('all');
+  const [statusFilter, setStatusFilter] = useState([]);
+  const [bloodFilter, setBloodFilter]   = useState([]);
+  const [tagFilter, setTagFilter]       = useState([]);
 
   const [editOpen, setEditOpen] = useState(false);
   const [editId,   setEditId]   = useState(null);
@@ -81,14 +82,14 @@ export default function Patients() {
   const allTags = [...new Set(patients.flatMap((p) => p.tags))].sort();
 
   const filtered = patients.filter((p) => {
-    if (statusFilter !== 'all' && p.status !== statusFilter) return false;
-    if (bloodFilter  !== 'all' && p.blood  !== bloodFilter)  return false;
-    if (tagFilter    !== 'all' && !p.tags.includes(tagFilter)) return false;
+    if (statusFilter.length > 0 && !statusFilter.includes(p.status)) return false;
+    if (bloodFilter.length > 0 && !bloodFilter.includes(p.blood)) return false;
+    if (tagFilter.length > 0 && !tagFilter.every((t) => p.tags.includes(t))) return false;
     return true;
   });
 
-  const hasFilters = statusFilter !== 'all' || bloodFilter !== 'all' || tagFilter !== 'all';
-  const clearFilters = () => { setStatusFilter('all'); setBloodFilter('all'); setTagFilter('all'); };
+  const hasFilters = statusFilter.length > 0 || bloodFilter.length > 0 || tagFilter.length > 0;
+  const clearFilters = () => { setStatusFilter([]); setBloodFilter([]); setTagFilter([]); };
 
   const archivePatient = (id) => {
     const p = patients.find((pt) => pt.id === id);
@@ -179,26 +180,114 @@ export default function Patients() {
       </div>
 
       {/* Filters */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
-        <CustomSelect style={selectStyle} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-          <option value="all">All status</option>
-          <option value="active">Active</option>
-          <option value="admitted">Admitted</option>
-          <option value="discharged">Discharged</option>
-          <option value="archived">Archived</option>
-        </CustomSelect>
-        <CustomSelect style={selectStyle} value={bloodFilter} onChange={(e) => setBloodFilter(e.target.value)}>
-          <option value="all">All blood groups</option>
-          {BLOOD_GROUPS.map((b) => <option key={b} value={b}>{b}</option>)}
-        </CustomSelect>
-        <CustomSelect style={selectStyle} value={tagFilter} onChange={(e) => setTagFilter(e.target.value)}>
-          <option value="all">All tags</option>
-          {allTags.map((t) => <option key={t} value={t}>{t}</option>)}
-        </CustomSelect>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <MultiSelect
+            label="Status"
+            options={[
+              { value: 'active', label: 'Active' },
+              { value: 'admitted', label: 'Admitted' },
+              { value: 'discharged', label: 'Discharged' },
+              { value: 'archived', label: 'Archived' },
+            ]}
+            selectedValues={statusFilter}
+            onChange={setStatusFilter}
+            placeholder="All status"
+            style={selectStyle}
+          />
+          <MultiSelect
+            label="Blood Group"
+            options={BLOOD_GROUPS}
+            selectedValues={bloodFilter}
+            onChange={setBloodFilter}
+            placeholder="All blood groups"
+            style={selectStyle}
+          />
+          <MultiSelect
+            label="Tags"
+            options={allTags}
+            selectedValues={tagFilter}
+            onChange={setTagFilter}
+            placeholder="All tags"
+            style={selectStyle}
+          />
+          {hasFilters && (
+            <button onClick={clearFilters} style={{ background: 'transparent', border: '1px solid var(--border-ui)', color: 'var(--fg-on-light-muted)', padding: '9px 14px', borderRadius: 8, fontFamily: 'inherit', fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <X size={13} /> Clear filters
+            </button>
+          )}
+        </div>
+
+        {/* Selected filters tabs */}
         {hasFilters && (
-          <button onClick={clearFilters} style={{ background: 'transparent', border: '1px solid var(--border-ui)', color: 'var(--fg-on-light-muted)', padding: '9px 14px', borderRadius: 8, fontFamily: 'inherit', fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <X size={13} /> Clear filters
-          </button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            {statusFilter.map((val) => (
+              <span
+                key={`status-${val}`}
+                onClick={() => setStatusFilter(statusFilter.filter((v) => v !== val))}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 12,
+                  padding: '4px 10px',
+                  background: 'var(--surface-subtle)',
+                  color: 'var(--fg-on-light)',
+                  border: '1px solid var(--border-ui)',
+                  borderRadius: 16,
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                }}
+              >
+                Status: {val.charAt(0).toUpperCase() + val.slice(1)}
+                <X size={12} style={{ color: 'var(--fg-on-light-muted)' }} />
+              </span>
+            ))}
+            {bloodFilter.map((val) => (
+              <span
+                key={`blood-${val}`}
+                onClick={() => setBloodFilter(bloodFilter.filter((v) => v !== val))}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 12,
+                  padding: '4px 10px',
+                  background: 'var(--surface-subtle)',
+                  color: 'var(--fg-on-light)',
+                  border: '1px solid var(--border-ui)',
+                  borderRadius: 16,
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                }}
+              >
+                Blood: {val}
+                <X size={12} style={{ color: 'var(--fg-on-light-muted)' }} />
+              </span>
+            ))}
+            {tagFilter.map((val) => (
+              <span
+                key={`tag-${val}`}
+                onClick={() => setTagFilter(tagFilter.filter((v) => v !== val))}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 12,
+                  padding: '4px 10px',
+                  background: 'var(--surface-subtle)',
+                  color: 'var(--fg-on-light)',
+                  border: '1px solid var(--border-ui)',
+                  borderRadius: 16,
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                }}
+              >
+                Tag: {val}
+                <X size={12} style={{ color: 'var(--fg-on-light-muted)' }} />
+              </span>
+            ))}
+          </div>
         )}
       </div>
 
