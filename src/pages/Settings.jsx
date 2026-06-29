@@ -11,7 +11,12 @@ import {
   FileText,
   FileSpreadsheet,
 } from 'lucide-react';
-import { getHospitalProfile, updateHospitalProfile, getWards, updateWards } from '../firebase/services/settingsService.js';
+import {
+  getHospitalProfile,
+  updateHospitalProfile,
+  getWards,
+  updateWards,
+} from '../firebase/services/settingsService.js';
 
 const INITIAL_WARDS = [
   { name: 'General Ward', beds: 20 },
@@ -106,25 +111,24 @@ function SavedToast({ show }) {
 
 export default function Settings() {
   const [profile, setProfile] = useState({
-    name: '', tagline: '', address: '', phone: '', email: '',
+    name: '',
+    tagline: '',
+    address: '',
+    phone: '',
+    email: '',
   });
   const [wards, setWards] = useState(INITIAL_WARDS);
   const [saved, setSaved] = useState(false);
-  const [settingsLoading, setSettingsLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([getHospitalProfile(), getWards()]).then(([p, w]) => {
       if (p) setProfile(p);
       if (w && w.length) setWards(w);
-      setSettingsLoading(false);
     });
   }, []);
 
   const showSaved = async () => {
-    await Promise.all([
-      updateHospitalProfile(profile),
-      updateWards(wards),
-    ]);
+    await Promise.all([updateHospitalProfile(profile), updateWards(wards)]);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
@@ -539,7 +543,9 @@ export default function Settings() {
                   }}
                 >
                   <span style={{ color: C.muted }}>{row.label}</span>
-                  <span style={{ color: C.text, fontWeight: 600 }}>{row.value}</span>
+                  <span style={{ color: row.highlight ? '#2d7a50' : C.text, fontWeight: 600 }}>
+                    {row.value}
+                  </span>
                 </div>
               ))}
             </div>

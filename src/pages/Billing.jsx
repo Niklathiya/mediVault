@@ -178,8 +178,21 @@ export default function Billing() {
           `<tr><td>${p.date}</td><td>${p.mode || ''}</td><td style="text-align:right">₹${Number(p.amount).toLocaleString('en-IN')}</td><td>${p.note || ''}</td></tr>`,
       )
       .join('');
-    const win = window.open('', '_blank', 'width=800,height=900');
-    win.document.write(`<!DOCTYPE html><html><head><title>Invoice ${bill.id}</title><style>
+    let iframe = document.getElementById('print-iframe');
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = 'print-iframe';
+      iframe.style.position = 'absolute';
+      iframe.style.width = '0px';
+      iframe.style.height = '0px';
+      iframe.style.border = '0px';
+      iframe.style.top = '-1000px';
+      iframe.style.left = '-1000px';
+      document.body.appendChild(iframe);
+    }
+    const pri = iframe.contentWindow || iframe.contentDocument;
+    pri.document.open();
+    pri.document.write(`<!DOCTYPE html><html><head><title>Invoice ${bill.id}</title><style>
       *{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:40px;color:#0f172a;font-size:14px}
       h1{font-size:22px;font-weight:700;margin-bottom:4px}
       .sub{color:#64748b;font-size:13px;margin-bottom:28px}
@@ -210,9 +223,12 @@ export default function Billing() {
         <tr><td>Balance</td><td class="balance">₹${Number(balance).toLocaleString('en-IN')}</td></tr>
       </tbody></table>
       ${payments ? `<h3>Payment History</h3><table><thead><tr><th>Date</th><th>Mode</th><th style="text-align:right">Amount</th><th>Note</th></tr></thead><tbody>${payments}</tbody></table>` : ''}
-      <script>window.onload=()=>{ window.print(); }</script>
     </body></html>`);
-    win.document.close();
+    pri.document.close();
+    setTimeout(() => {
+      pri.focus();
+      pri.print();
+    }, 100);
   };
 
   const updateItem = (idx, field, val) =>

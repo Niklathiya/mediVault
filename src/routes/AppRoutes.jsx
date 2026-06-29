@@ -32,7 +32,6 @@ export default function AppRoutes() {
           <Route path="/staff/nurses" element={<Staff />} />
           <Route path="/staff/paramedical" element={<Staff />} />
           <Route path="/staff/admin" element={<Staff />} />
-          <Route path="/staff/support" element={<Staff />} />
 
           <Route path="/billing" element={<Billing />} />
           <Route path="/activity" element={<ActivityLog />} />

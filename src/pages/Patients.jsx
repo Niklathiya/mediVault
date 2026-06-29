@@ -146,7 +146,11 @@ export default function Patients() {
 
   const archivePatient = (id) => {
     const p = patients.find((pt) => pt.id === id);
-    if (p) toggleArchivePatient(id, p.status);
+    if (p) {
+      const action = p.status === 'archived' ? 'unarchive' : 'archive';
+      if (!window.confirm(`Are you sure you want to ${action} this patient?`)) return;
+      toggleArchivePatient(id, p.status);
+    }
   };
 
   const openEdit = (p) => {

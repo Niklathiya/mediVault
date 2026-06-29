@@ -1,18 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Users, FlaskConical, BedDouble, IndianRupee, Leaf } from 'lucide-react';
-import { subscribeLogs } from '../../../firebase/services/activityLogService.js';
+import { Users, FlaskConical, BedDouble, IndianRupee } from 'lucide-react';
 
 export default function KpiGrid() {
-  const [paperSaved, setPaperSaved] = useState(0);
-
-  useEffect(() => {
-    const unsub = subscribeLogs(
-      (data) => setPaperSaved(data.length * 5),
-      console.error
-    );
-    return unsub;
-  }, []);
-
   const KPIs = [
     {
       label: 'Active patients',
@@ -54,20 +42,10 @@ export default function KpiGrid() {
       iconColor: '#15803d',
       icon: IndianRupee,
     },
-    {
-      label: 'Paper sheets saved',
-      value: paperSaved.toLocaleString(),
-      badge: 'Eco impact',
-      badgeColor: '#0891b2',
-      badgeBg: 'rgba(8,145,178,0.10)',
-      iconBg: 'rgba(8,145,178,0.10)',
-      iconColor: '#0891b2',
-      icon: Leaf,
-    },
   ];
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
       {KPIs.map((kpi) => {
         const Icon = kpi.icon;
         return (
