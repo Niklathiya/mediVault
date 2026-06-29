@@ -7,6 +7,7 @@ import {
   deletePatientSubItem,
   updatePatientSubItem,
 } from '../firebase/services/patientService.js';
+import { recordPayment } from '../firebase/services/billingService.js';
 import AddVisitModal from '../components/modals/AddVisitModal.jsx';
 import AddPrescriptionModal from '../components/modals/AddPrescriptionModal.jsx';
 import AddLabModal from '../components/modals/AddLabModal.jsx';
@@ -42,6 +43,7 @@ import {
   Trash2,
   ChevronRight,
   Eye,
+  IndianRupee,
 } from 'lucide-react';
 
 const TABS = [
@@ -250,6 +252,9 @@ export default function PatientDetail() {
   const [editLab, setEditLab] = useState(null);
   const [editVital, setEditVital] = useState(null);
   const [editDocument, setEditDocument] = useState(null);
+  const [payBill, setPayBill] = useState(null);
+  const [payForm, setPayForm] = useState({ amount: '', mode: 'Cash', note: '' });
+  const [paySaving, setPaySaving] = useState(false);
 
   // Adjust state during render when id changes to avoid synchronous setState inside useEffect
   const [prevId, setPrevId] = useState(id);
@@ -410,6 +415,36 @@ export default function PatientDetail() {
   };
 
   const fmt = (n) => '₹' + n.toLocaleString('en-IN');
+
+  const openPayModal = (bill) => {
+    setPayForm({ amount: String(bill.amount - bill.paid), mode: 'Cash', note: '' });
+    setPayBill(bill);
+  };
+
+  const savePayment = async () => {
+    const amt = Number(payForm.amount);
+    if (!amt || !payBill) return;
+    setPaySaving(true);
+    try {
+      const now = new Date();
+      const dateLabel = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+      const newEntry = { amount: amt, date: dateLabel, mode: payForm.mode, note: payForm.note || '' };
+      const newPaid = payBill.paid + amt;
+      const newStatus = newPaid >= payBill.amount ? 'Paid' : 'Partial';
+      await recordPayment(payBill.id, newEntry, newPaid, newStatus);
+      setPatient((prev) => ({
+        ...prev,
+        billings: (prev.billings || []).map((b) =>
+          b.id === payBill.id ? { ...b, paid: newPaid, status: newStatus, payments: [...(b.payments || []), newEntry] } : b
+        ),
+      }));
+      setPayBill(null);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setPaySaving(false);
+    }
+  };
 
   // ── TIMELINE ──────────────────────────────────────────────────────────────
   const timeline = [
@@ -1800,7 +1835,7 @@ export default function PatientDetail() {
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '140px 80px 100px 100px 90px 100px',
+                  gridTemplateColumns: '140px 80px 100px 100px 90px 150px',
                   padding: '10px 20px',
                   background: C.subtleBg,
                   fontSize: 11,
@@ -1823,8 +1858,10 @@ export default function PatientDetail() {
                 </div>
               ) : (
                 patient.billings.map((b) => {
-                  const isPaid = b.status === 'paid';
-                  const isPartial = b.status === 'partial';
+                  const statusLower = (b.status || '').toLowerCase();
+                  const isPaid    = statusLower === 'paid';
+                  const isPartial = statusLower === 'partial';
+                  const isPending = !isPaid && !isPartial;
                   const statusColor = isPaid ? '#15803d' : isPartial ? '#d9a441' : '#d95050';
                   const statusBg = isPaid
                     ? 'rgba(78,179,116,0.10)'
@@ -1837,7 +1874,7 @@ export default function PatientDetail() {
                       key={b.id}
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '140px 80px 100px 100px 90px 100px',
+                        gridTemplateColumns: '140px 80px 100px 100px 90px 150px',
                         padding: '12px 20px',
                         borderTop: `1px solid ${C.border}`,
                         alignItems: 'center',
@@ -1874,39 +1911,28 @@ export default function PatientDetail() {
                           {statusLabel}
                         </span>
                       </div>
-                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
                         <ActionBtn
-                          icon={Pencil}
-                          title="Edit"
-                          onClick={() =>
-                            navigate('/billing', {
-                              state: { searchQuery: b.id, openBillId: b.id, mode: 'edit' },
-                            })
-                          }
+                          icon={Eye}
+                          title="View bill"
+                          onClick={() => navigate('/billing', { state: { searchQuery: b.id, openBillId: b.id, mode: 'view' } })}
                         />
-                        <button
-                          onClick={() =>
-                            navigate('/billing', {
-                              state: { searchQuery: b.id, openBillId: b.id, mode: 'view' },
-                            })
-                          }
-                          style={{
-                            background: C.primary,
-                            color: 'white',
-                            border: 'none',
-                            padding: '5px 10px',
-                            borderRadius: 6,
-                            cursor: 'pointer',
-                            fontFamily: 'inherit',
-                            fontSize: 12,
-                            fontWeight: 600,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          <Eye size={11} />
-                        </button>
+                        {isPending && (
+                          <button
+                            onClick={() => openPayModal(b)}
+                            style={{ background: '#15803d', color: 'white', border: 'none', padding: '5px 10px', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', fontSize: 11, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}
+                          >
+                            <IndianRupee size={11} /> Record Payment
+                          </button>
+                        )}
+                        {isPartial && (
+                          <button
+                            onClick={() => openPayModal(b)}
+                            style={{ background: C.primary, color: 'white', border: 'none', padding: '5px 10px', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', fontSize: 11, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}
+                          >
+                            <IndianRupee size={11} /> Add Payment
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -2117,6 +2143,93 @@ export default function PatientDetail() {
           });
         }}
       />
+
+      {/* Payment modal */}
+      {payBill && createPortal(
+        <div className="modal-backdrop" onClick={() => setPayBill(null)} style={{ alignItems: 'flex-start', paddingTop: 40 }}>
+          <div
+            className="modal-panel"
+            style={{ maxWidth: 420, width: '100%', background: 'var(--surface)', display: 'flex', flexDirection: 'column' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 24px', borderBottom: '1px solid var(--border-card)' }}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <div style={{ width: 34, height: 34, borderRadius: 8, background: '#15803d', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <IndianRupee size={16} color="white" />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--fg-on-light)' }}>
+                    {(payBill.status || '').toLowerCase() === 'partial' ? 'Add Payment' : 'Record Payment'}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--fg-on-light-muted)' }}>
+                    {payBill.id} · Balance: {fmt(payBill.amount - payBill.paid)}
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => setPayBill(null)} style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border-ui)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <label>
+                <span style={{ display: 'block', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--fg-on-light-muted)', marginBottom: 4 }}>
+                  Amount (₹) *
+                </span>
+                <input
+                  type="number"
+                  min="1"
+                  max={payBill.amount - payBill.paid}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--border-strong)', borderRadius: 6, fontFamily: 'inherit', fontSize: 14, outline: 'none', background: 'var(--bg-canvas)', color: 'var(--fg-on-light)', boxSizing: 'border-box' }}
+                  value={payForm.amount}
+                  onChange={(e) => setPayForm((f) => ({ ...f, amount: e.target.value }))}
+                  placeholder={`Max ${fmt(payBill.amount - payBill.paid)}`}
+                  autoFocus
+                />
+              </label>
+              <label>
+                <span style={{ display: 'block', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--fg-on-light-muted)', marginBottom: 4 }}>
+                  Payment Mode
+                </span>
+                <select
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--border-strong)', borderRadius: 6, fontFamily: 'inherit', fontSize: 14, outline: 'none', background: 'var(--bg-canvas)', color: 'var(--fg-on-light)', boxSizing: 'border-box' }}
+                  value={payForm.mode}
+                  onChange={(e) => setPayForm((f) => ({ ...f, mode: e.target.value }))}
+                >
+                  {['Cash', 'Card', 'UPI', 'Net Banking', 'Cheque'].map((m) => <option key={m}>{m}</option>)}
+                </select>
+              </label>
+              <label>
+                <span style={{ display: 'block', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--fg-on-light-muted)', marginBottom: 4 }}>
+                  Note (optional)
+                </span>
+                <input
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--border-strong)', borderRadius: 6, fontFamily: 'inherit', fontSize: 14, outline: 'none', background: 'var(--bg-canvas)', color: 'var(--fg-on-light)', boxSizing: 'border-box' }}
+                  value={payForm.note}
+                  onChange={(e) => setPayForm((f) => ({ ...f, note: e.target.value }))}
+                  placeholder="e.g. Reference number, receipt no…"
+                />
+              </label>
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border-card)', display: 'flex', justifyContent: 'flex-end', gap: 10, background: 'var(--surface-subtle)' }}>
+              <button type="button" onClick={() => setPayBill(null)} className="btn-secondary">Cancel</button>
+              <button
+                type="button"
+                onClick={savePayment}
+                className="btn-primary"
+                disabled={paySaving || !Number(payForm.amount)}
+              >
+                {paySaving ? 'Saving…' : 'Confirm Payment'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Edit modal */}
       {isEditOpen &&
