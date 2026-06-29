@@ -94,6 +94,12 @@ export default function Billing() {
   };
   const closeModal = () => setModal(null);
 
+  const openPayModal = (bill) => {
+    setPayForm({ amount: bill.amount - bill.paid, mode: 'Cash', note: '' });
+    setPayModal(bill);
+  };
+  const closePayModal = () => setPayModal(null);
+
   useEffect(() => {
     if (!loading && bills.length > 0 && location.state?.openBillId) {
       const bill = bills.find((b) => b.id === location.state.openBillId);
@@ -103,6 +109,8 @@ export default function Billing() {
         setTimeout(() => {
           if (mode === 'edit') {
             openEdit(bill);
+          } else if (mode === 'payment') {
+            openPayModal(bill);
           } else {
             openView(bill);
           }
@@ -140,12 +148,6 @@ export default function Billing() {
   const totalBilled = bills.reduce((s, b) => s + b.amount, 0);
   const totalCollected = bills.reduce((s, b) => s + b.paid, 0);
   const totalOutstanding = bills.reduce((s, b) => s + (b.amount - b.paid), 0);
-
-  const openPayModal = (bill) => {
-    setPayForm({ amount: bill.amount - bill.paid, mode: 'Cash', note: '' });
-    setPayModal(bill);
-  };
-  const closePayModal = () => setPayModal(null);
 
   const savePayment = async () => {
     const amt = Number(payForm.amount);
@@ -615,7 +617,7 @@ export default function Billing() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  {viewBill.amount - viewBill.paid > 0 && (
+                  {viewBill.status === 'Pending' && (
                     <button
                       onClick={() => openPayModal(viewBill)}
                       style={{
@@ -918,8 +920,9 @@ export default function Billing() {
                     </p>
                   )}
 
-                  {viewBill.amount - viewBill.paid > 0 && (
+                  {viewBill.status === 'Partial' && (
                     <button
+                      onClick={() => openPayModal(viewBill)}
                       style={{
                         width: '100%',
                         background: '#15803d',
