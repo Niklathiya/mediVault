@@ -9,7 +9,6 @@ import {
   Stethoscope,
   FlaskConical,
   Briefcase,
-  UserCheck,
   Receipt,
   BarChart2,
   Activity,
@@ -110,7 +109,6 @@ export default function Sidebar() {
     '/staff/nurses',
     '/staff/paramedical',
     '/staff/admin',
-    '/staff/support',
     '/staff',
   ].some((p) => location.pathname.startsWith(p));
 
@@ -215,7 +213,6 @@ export default function Sidebar() {
               <SideNavItem to="/staff/nurses" icon={HeartPulse} label="Nurses" />
               <SideNavItem to="/staff/paramedical" icon={FlaskConical} label="Paramedical" />
               <SideNavItem to="/staff/admin" icon={Briefcase} label="Administration" />
-              <SideNavItem to="/staff/support" icon={UserCheck} label="Support Staff" />
             </div>
           )}
 

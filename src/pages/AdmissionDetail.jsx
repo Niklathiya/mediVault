@@ -716,7 +716,19 @@ export default function AdmissionDetail() {
   };
 
   const printAdmission = () => {
-    const w = window.open('', '_blank');
+    let iframe = document.getElementById('print-iframe');
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = 'print-iframe';
+      iframe.style.position = 'absolute';
+      iframe.style.width = '0px';
+      iframe.style.height = '0px';
+      iframe.style.border = '0px';
+      iframe.style.top = '-1000px';
+      iframe.style.left = '-1000px';
+      document.body.appendChild(iframe);
+    }
+    const pri = iframe.contentWindow || iframe.contentDocument;
 
     const renderSection = (title, content) => `
       <div class="section-container">
@@ -1199,7 +1211,8 @@ export default function AdmissionDetail() {
       </table>
     `;
 
-    w.document.write(`
+    pri.document.open();
+    pri.document.write(`
       <!DOCTYPE html>
       <html>
       <head>
@@ -1382,8 +1395,11 @@ export default function AdmissionDetail() {
       </body>
       </html>
     `);
-    w.document.close();
-    w.print();
+    pri.document.close();
+    setTimeout(() => {
+      pri.focus();
+      pri.print();
+    }, 100);
   };
 
   return (
@@ -1622,6 +1638,7 @@ export default function AdmissionDetail() {
                 hour12: true,
               });
               if (isAdmitted) {
+                if (!window.confirm('Are you sure you want to discharge this patient?')) return;
                 dischargeAdmission(id, TODAY, now).then(() =>
                   setAdm((prev) => ({
                     ...prev,

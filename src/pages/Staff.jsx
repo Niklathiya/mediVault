@@ -7,7 +7,6 @@ import {
   HeartPulse,
   FlaskConical,
   Briefcase,
-  UserCheck,
   Phone,
   Mail,
   Calendar,
@@ -28,7 +27,6 @@ const TABS = [
   { key: 'nurses', label: 'Nurses', icon: HeartPulse, path: '/staff/nurses' },
   { key: 'paramedical', label: 'Paramedical', icon: FlaskConical, path: '/staff/paramedical' },
   { key: 'admin', label: 'Administration', icon: Briefcase, path: '/staff/admin' },
-  { key: 'support', label: 'Support Staff', icon: UserCheck, path: '/staff/support' },
 ];
 
 const TAB_META = {
@@ -36,7 +34,6 @@ const TAB_META = {
   nurses: { title: 'Nursing Staff', plural: 'nurses', addLabel: 'Add Nurse' },
   paramedical: { title: 'Paramedical', plural: 'staff', addLabel: 'Add Staff' },
   admin: { title: 'Administration', plural: 'staff', addLabel: 'Add Staff' },
-  support: { title: 'Support Staff', plural: 'staff', addLabel: 'Add Staff' },
 };
 
 const AVATAR_COLOR = {
@@ -44,7 +41,6 @@ const AVATAR_COLOR = {
   nurses: '#2d6a9f',
   paramedical: '#5b8a3c',
   admin: '#7c5a9b',
-  support: '#6b7280',
 };
 
 const STATUS_STYLE = {
@@ -75,15 +71,7 @@ const ADMIN_ROLES = [
   'IT Executive',
   'Administrator',
 ];
-const SUPPORT_ROLES = [
-  'Ward Boy',
-  'Ward Attendant',
-  'Housekeeping',
-  'Security Guard',
-  'Ambulance Driver',
-  'Cook/Kitchen Staff',
-  'Laundry Staff',
-];
+
 
 const EMPTY_FORM = {
   doctors: {
@@ -124,14 +112,6 @@ const EMPTY_FORM = {
     dept: '',
     phone: '',
     email: '',
-    joiningDate: '',
-    status: 'Active',
-  },
-  support: {
-    name: '',
-    role: 'Security Guard',
-    shift: 'Day',
-    phone: '',
     joiningDate: '',
     status: 'Active',
   },
@@ -247,7 +227,6 @@ function SelectField({ value, onChange, children }) {
 
 function StaffCard({ m, tab, onEdit, onDelete }) {
   const s = STATUS_STYLE[m.status] ?? STATUS_STYLE.Active;
-  const avatarSize = tab === 'support' ? 40 : 44;
   const isSupport = tab === 'support';
 
   return (
@@ -256,7 +235,7 @@ function StaffCard({ m, tab, onEdit, onDelete }) {
         background: 'var(--surface)',
         border: '1px solid var(--border-card)',
         borderRadius: 12,
-        padding: isSupport ? 18 : 20,
+        padding: 20,
         display: 'flex',
         flexDirection: 'column',
         gap: 12,
@@ -269,14 +248,14 @@ function StaffCard({ m, tab, onEdit, onDelete }) {
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
         <div
           style={{
-            width: avatarSize,
-            height: avatarSize,
+            width: 44,
+            height: 44,
             borderRadius: '50%',
             background: AVATAR_COLOR[tab],
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: isSupport ? 12 : 14,
+            fontSize: 14,
             fontWeight: 700,
             color: 'white',
             flexShrink: 0,
@@ -287,7 +266,7 @@ function StaffCard({ m, tab, onEdit, onDelete }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
             style={{
-              fontSize: isSupport ? 13 : 14,
+              fontSize: 14,
               fontWeight: 600,
               color: 'var(--fg-on-light)',
               overflow: 'hidden',
@@ -299,93 +278,61 @@ function StaffCard({ m, tab, onEdit, onDelete }) {
           </div>
           <div
             style={{
-              fontSize: isSupport ? 11 : 12,
+              fontSize: 12,
               color: 'var(--fg-on-light-muted)',
               marginTop: 1,
             }}
           >
             {tab === 'doctors' ? m.specialization : tab === 'nurses' ? m.designation : m.role}
           </div>
-          {isSupport && (
-            <div style={{ display: 'flex', gap: 5, marginTop: 5, flexWrap: 'wrap' }}>
-              <span
-                style={{
-                  fontSize: 11,
-                  padding: '2px 8px',
-                  borderRadius: 10,
-                  background: s.bg,
-                  color: s.color,
-                  fontWeight: 500,
-                }}
-              >
-                {m.status}
-              </span>
-              <span
-                style={{
-                  fontSize: 11,
-                  padding: '2px 8px',
-                  borderRadius: 10,
-                  background: 'var(--surface-subtle)',
-                  color: 'var(--fg-on-light-muted)',
-                  fontWeight: 500,
-                }}
-              >
-                {m.shift}
-              </span>
-            </div>
-          )}
         </div>
-        {!isSupport && (
-          <span
-            style={{
-              fontSize: 11,
-              padding: '3px 9px',
-              borderRadius: 10,
-              background: s.bg,
-              color: s.color,
-              fontWeight: 500,
-              flexShrink: 0,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {m.status}
-          </span>
-        )}
+        <span
+          style={{
+            fontSize: 11,
+            padding: '3px 9px',
+            borderRadius: 10,
+            background: s.bg,
+            color: s.color,
+            fontWeight: 500,
+            flexShrink: 0,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {m.status}
+        </span>
       </div>
 
       {/* Info boxes */}
-      {!isSupport && (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: tab === 'admin' ? '1fr' : '1fr 1fr',
-            gap: 8,
-          }}
-        >
-          {tab === 'doctors' && (
-            <>
-              <InfoBox label="Qualification" value={m.qualification} />
-              <InfoBox label="Department" value={m.dept} />
-            </>
-          )}
-          {tab === 'nurses' && (
-            <>
-              <InfoBox label="Ward" value={m.ward} />
-              <InfoBox label="Shift" value={m.shift} />
-            </>
-          )}
-          {tab === 'paramedical' && (
-            <>
-              <InfoBox label="Department" value={m.dept} />
-              <InfoBox label="Qualification" value={m.qualification} />
-            </>
-          )}
-          {tab === 'admin' && <InfoBox label="Department" value={m.dept} />}
-        </div>
-      )}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: tab === 'admin' ? '1fr' : '1fr 1fr',
+          gap: 8,
+        }}
+      >
+        {tab === 'doctors' && (
+          <>
+            <InfoBox label="Qualification" value={m.qualification} />
+            <InfoBox label="Department" value={m.dept} />
+          </>
+        )}
+        {tab === 'nurses' && (
+          <>
+            <InfoBox label="Ward" value={m.ward} />
+            <InfoBox label="Shift" value={m.shift} />
+          </>
+        )}
+        {tab === 'paramedical' && (
+          <>
+            <InfoBox label="Department" value={m.dept} />
+            <InfoBox label="Qualification" value={m.qualification} />
+          </>
+        )}
+        {tab === 'admin' && <InfoBox label="Department" value={m.dept} />}
+      </div>
 
       {/* Contact details */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: isSupport ? 4 : 5 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
         {(tab === 'doctors' || tab === 'nurses') && m.regNo && (
           <ContactRow icon={BadgeCheck}>{m.regNo}</ContactRow>
         )}
@@ -454,14 +401,60 @@ function StaffCard({ m, tab, onEdit, onDelete }) {
   );
 }
 
+const ensureIsoDate = (dateStr) => {
+  if (!dateStr) return '';
+  if (dateStr.includes('-')) return dateStr;
+  
+  if (dateStr.includes('/')) {
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+      const day = parts[0].padStart(2, '0');
+      const month = parts[1].padStart(2, '0');
+      const year = parts[2];
+      return `${year}-${month}-${day}`;
+    }
+  }
+
+  const months = {
+    jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
+    jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12'
+  };
+  const parts = dateStr.trim().split(/\s+/);
+  if (parts.length === 3) {
+    const day = parts[0].padStart(2, '0');
+    const month = months[parts[1].substring(0, 3).toLowerCase()];
+    const year = parts[2];
+    if (month) return `${year}-${month}-${day}`;
+  }
+  return dateStr;
+};
+
+const formatDmyDate = (isoStr) => {
+  if (!isoStr || !isoStr.includes('-')) return isoStr;
+  const [year, month, day] = isoStr.split('-');
+  return `${day}/${month}/${year}`;
+};
+
 function StaffModal({ tab, member, onClose, onSave }) {
   const isNew = !member;
-  const [form, setForm] = useState(member ? { ...member } : { ...EMPTY_FORM[tab] });
+  const [form, setForm] = useState(() => {
+    if (member) {
+      return {
+        ...member,
+        joiningDate: member.joiningDate ? ensureIsoDate(member.joiningDate) : ''
+      };
+    }
+    return { ...EMPTY_FORM[tab] };
+  });
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const handleSave = () => {
     if (!form.name.trim()) return;
-    onSave(form);
+    const finalForm = {
+      ...form,
+      joiningDate: form.joiningDate ? formatDmyDate(form.joiningDate) : ''
+    };
+    onSave(finalForm);
   };
 
   const meta = TAB_META[tab];
@@ -693,27 +686,7 @@ function StaffModal({ tab, member, onClose, onSave }) {
               </label>
             )}
 
-            {/* ── Support: Role | Shift ── */}
-            {tab === 'support' && (
-              <label>
-                <span style={labelStyle}>Role</span>
-                <SelectField value={form.role} onChange={(e) => set('role', e.target.value)}>
-                  {SUPPORT_ROLES.map((r) => (
-                    <option key={r}>{r}</option>
-                  ))}
-                </SelectField>
-              </label>
-            )}
-            {tab === 'support' && (
-              <label>
-                <span style={labelStyle}>Shift</span>
-                <SelectField value={form.shift} onChange={(e) => set('shift', e.target.value)}>
-                  {SHIFT_OPTS.map((s) => (
-                    <option key={s}>{s}</option>
-                  ))}
-                </SelectField>
-              </label>
-            )}
+
 
             {/* ── Common: Phone | Joining Date (paramedical has phone above already) ── */}
             {tab !== 'paramedical' && (
@@ -731,7 +704,8 @@ function StaffModal({ tab, member, onClose, onSave }) {
             <label>
               <span style={labelStyle}>Joining Date</span>
               <input
-                type="date"
+                type="text"
+                placeholder="dd/mm/yyyy"
                 value={form.joiningDate}
                 onChange={(e) => set('joiningDate', e.target.value)}
                 style={{ ...inputStyle, marginTop: 4 }}
@@ -879,7 +853,7 @@ export default function Staff() {
       </div>
 
       {/* Staff grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: tab === 'support' ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
         {members.map((m) => (
           <StaffCard key={m.id} m={m} tab={tab} onEdit={openEdit} onDelete={deleteMember} />
         ))}

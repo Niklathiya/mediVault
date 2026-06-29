@@ -117,6 +117,7 @@ export default function Admissions() {
     const a = admissions.find((x) => x.id === id);
     if (!a) return;
     if (a.status === 'admitted') {
+      if (!window.confirm('Are you sure you want to discharge this patient?')) return;
       dischargeAdmission(id, TODAY, new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }));
     } else {
       updateAdmission(id, { status: 'admitted', dischargedOn: null, dischargedTime: null });

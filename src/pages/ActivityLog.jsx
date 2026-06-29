@@ -14,14 +14,13 @@ import {
   ChevronDown,
   HardDrive,
   Shield,
-  Leaf,
   Users,
   Stethoscope,
   FileText,
   Info,
 } from 'lucide-react';
 import { subscribeLogs } from '../firebase/services/activityLogService.js';
-
+import { getHospitalProfile } from '../firebase/services/settingsService.js';
 
 const TYPE_CONFIG = {
   registration: {
@@ -105,11 +104,26 @@ const KPI = [
 export default function ActivityLog() {
   const [logs, setLogs] = useState([]);
   const [logsLoading, setLogsLoading] = useState(true);
+  const [hospitalName, setHospitalName] = useState('—');
+
+  useEffect(() => {
+    getHospitalProfile()
+      .then((p) => {
+        if (p?.name) setHospitalName(p.name);
+      })
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     const unsub = subscribeLogs(
-      (data) => { setLogs(data); setLogsLoading(false); },
-      (err)  => { console.error('logs subscription error:', err); setLogsLoading(false); },
+      (data) => {
+        setLogs(data);
+        setLogsLoading(false);
+      },
+      (err) => {
+        console.error('logs subscription error:', err);
+        setLogsLoading(false);
+      },
     );
     return unsub;
   }, []);
@@ -132,11 +146,19 @@ export default function ActivityLog() {
     { label: 'Prescriptions', count: `${rxCount} records`, color: '#7c5a9b' },
   ];
 
-  if (logsLoading) return (
-    <div style={{ padding: 60, textAlign: 'center', color: 'var(--fg-on-light-muted)', fontSize: 14 }}>
-      Loading activity log…
-    </div>
-  );
+  if (logsLoading)
+    return (
+      <div
+        style={{
+          padding: 60,
+          textAlign: 'center',
+          color: 'var(--fg-on-light-muted)',
+          fontSize: 14,
+        }}
+      >
+        Loading activity log…
+      </div>
+    );
 
   const filtered = logs.filter((log) => {
     const matchType = typeFilter === 'all' || log.type === typeFilter;
@@ -380,7 +402,14 @@ export default function ActivityLog() {
           </div>
 
           {/* Filters — row 2: type tab slider */}
-          <div style={{ overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', padding: '3px 1px' }}>
+          <div
+            style={{
+              overflowX: 'auto',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              padding: '3px 1px',
+            }}
+          >
             <div style={{ display: 'flex', gap: 6, width: 'max-content' }}>
               {ALL_TYPES.map((t) => {
                 const cfg = TYPE_CONFIG[t];
@@ -707,7 +736,7 @@ export default function ActivityLog() {
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               {[
                 { label: 'System', value: 'MediVault IPD v1.0' },
-                { label: 'Hospital', value: 'BAPS PSH, Surat' },
+                { label: 'Hospital', value: hospitalName },
                 { label: 'Deployed on', value: '01 June 2026' },
                 { label: 'Total staff', value: '25' },
                 { label: 'Last backup', value: 'Today, 06:00 AM', highlight: true },
@@ -737,38 +766,6 @@ export default function ActivityLog() {
                   </div>
                 </div>
               ))}
-            </div>
-          </div>
-
-          {/* Paper Eliminated */}
-          <div
-            style={{
-              background: '#0891b20a',
-              border: '1px solid #0891b226',
-              borderRadius: 12,
-              padding: '18px 20px',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <Leaf size={15} style={{ color: '#0891b2' }} />
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg-on-light)' }}>
-                Paper Eliminated
-              </div>
-            </div>
-            <div
-              style={{
-                fontSize: 38,
-                fontWeight: 300,
-                color: '#0891b2',
-                lineHeight: 1,
-                marginBottom: 8,
-              }}
-            >
-              {(logs.length * 5).toLocaleString()}
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--fg-on-light-muted)', lineHeight: 1.6 }}>
-              Estimated paper forms eliminated since go-live. Every digital record replaces an
-              average of 4–6 physical forms.
             </div>
           </div>
         </div>
